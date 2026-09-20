@@ -60,6 +60,25 @@ def test_scope_and_model_change_never_leak_old_vectors(tmp_path):
     assert engine.retrieve('缓存多久', kb['id'], []) == []
 
 
+def test_rerank_preserves_vector_top_evidence(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('paper.txt', '算法思想 创新点 实验结果'.encode(), 'default')
+    from app.models import fingerprint
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': True, 'reranker_evidence': 2})
+    candidates = [
+        {'chunk_id': 'top', 'document_id': doc['id'], 'text': '算法思想', 'distance': 0.01, 'name': 'paper.txt', 'location': '1'},
+        {'chunk_id': 'middle', 'document_id': doc['id'], 'text': '创新点', 'distance': 0.2, 'name': 'paper.txt', 'location': '2'},
+        {'chunk_id': 'low', 'document_id': doc['id'], 'text': '实验结果', 'distance': 0.4, 'name': 'paper.txt', 'location': '3'},
+    ]
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: candidates
+    engine.reranker.rank = lambda question, items, config: type('R', (), {'items': list(reversed(items)), 'provider': 'test', 'device': 'cpu', 'fallback': False, 'error': None})()
+    result = engine.retrieve('算法思想和创新点', 'default', [])
+    assert 'top' in {item['chunk_id'] for item in result}
+    assert len(result) == 2
+
+
 def test_redacted_settings_and_unconfigured_upload(tmp_path):
     engine = make_engine(tmp_path)
     public = engine.store.settings(public=True)

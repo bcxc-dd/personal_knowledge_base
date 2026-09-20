@@ -10,7 +10,7 @@ DEFAULTS = {
     'embedding_mode': 'local', 'embedding_url': '', 'embedding_model': 'BAAI/bge-small-zh-v1.5',
     'embedding_key': '', 'allow_external': False,
     'reranker_enabled': False, 'reranker_device': 'auto', 'reranker_model': 'BAAI/bge-reranker-base',
-    'reranker_candidates': 20, 'reranker_evidence': 6,
+    'reranker_candidates': 20, 'reranker_evidence': 8,
 }
 
 
