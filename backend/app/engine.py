@@ -141,7 +141,10 @@ class Engine:
         if not eligible:
             return RetrievalResult([], {'candidate_count': 0, 'items': [], 'provider': 'vector', 'device': 'none', 'fallback': False, 'error': None})
         vectors = self.models.embed([question], config, query=True)
-        candidates = self.vectors.search(fp, vectors[0], eligible, limit=int(config.get('reranker_candidates', 20)))
+        evidence_limit = int(config.get('reranker_evidence', 8))
+        reranker_enabled = bool(config.get('reranker_enabled', False))
+        candidate_limit = int(config.get('reranker_candidates', 20)) if reranker_enabled else evidence_limit
+        candidates = self.vectors.search(fp, vectors[0], eligible, limit=candidate_limit)
         candidates = [h for h in candidates if self.store.document(h['document_id'])]
         for index, hit in enumerate(candidates, 1):
             hit['vector_rank'] = index
@@ -151,7 +154,6 @@ class Engine:
         for index, hit in enumerate(items, 1):
             hit['rerank_rank'] = index
             hit['selected'] = False
-        evidence_limit = int(config.get('reranker_evidence', 8))
         selected = list(items[:evidence_limit])
         selected_ids = {item['chunk_id'] for item in selected}
         ranked_by_id = {item['chunk_id']: item for item in items}

@@ -79,6 +79,25 @@ def test_rerank_preserves_vector_top_evidence(tmp_path):
     assert len(result) == 2
 
 
+def test_disabled_rerank_uses_final_evidence_limit_directly(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('paper.txt', '算法思想 创新点 实验结果'.encode(), 'default')
+    from app.models import fingerprint
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_candidates': 20, 'reranker_evidence': 2})
+    seen = {}
+    candidates = [{'chunk_id': str(i), 'document_id': doc['id'], 'text': str(i), 'distance': i / 10, 'name': 'paper.txt', 'location': str(i)} for i in range(2)]
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    def search(*args, **kwargs):
+        seen['limit'] = kwargs['limit']
+        return candidates
+    engine.vectors.search = search
+    result = engine.retrieve('算法思想', 'default', [])
+    assert seen['limit'] == 2
+    assert len(result) == 2
+    assert result.diagnostics['provider'] == 'vector'
+
+
 def test_redacted_settings_and_unconfigured_upload(tmp_path):
     engine = make_engine(tmp_path)
     public = engine.store.settings(public=True)
