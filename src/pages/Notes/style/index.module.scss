@@ -1,0 +1,12 @@
+.page { max-width: 1100px; margin: 0 auto; }
+.layout { display: grid; grid-template-columns: 250px 1fr; gap: 18px; min-height: 560px; }
+.layout aside { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--surface); }
+.layout aside input, .title, textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px; padding: 9px; background: var(--bg); color: var(--ink); }
+.layout aside button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 10px; border-radius: 8px; color: var(--ink-soft); cursor: pointer; }
+.layout aside button.active { background: var(--accent-soft); }
+.layout aside b, .layout aside small { display: block; } .layout aside small { color: var(--muted); margin-top: 3px; }
+.editor { border: 1px solid var(--line); border-radius: 12px; padding: 18px; background: var(--surface); }
+.title { font-size: 18px; margin-bottom: 12px; } textarea { min-height: 200px; resize: vertical; }
+.editor button { margin: 12px 8px 12px 0; } .preview { border-top: 1px solid var(--line); padding-top: 12px; } .refs { color: var(--muted); font-size: 12px; }
+.empty { color: var(--muted); text-align: center; padding: 80px 0; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }

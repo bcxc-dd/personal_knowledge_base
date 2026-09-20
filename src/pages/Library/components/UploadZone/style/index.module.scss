@@ -1,0 +1,13 @@
+.zone { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; gap: 27px; padding: 32px; border: 1px dashed #b9ccc0; background: linear-gradient(110deg, #f2f7f2, #f8faf4); border-radius: 12px; margin-bottom: 30px; min-height: 173px; }
+.dragging { background: #e4f1e6; border-color: #438164; }
+.illustration { position: relative; width: 69px; height: 77px; flex-shrink: 0; margin-left: 8px; }
+.frontSheet, .backSheet { position: absolute; width: 48px; height: 60px; border-radius: 6px; }
+.backSheet { top: 0; left: 18px; transform: rotate(14deg); background: #dee9d7; border: 1px solid #cfddc4; }
+.frontSheet { left: 5px; top: 10px; transform: rotate(-10deg); display: grid; place-items: center; background: #fff; border: 1px solid #cbd9c4; color: #88a17c; box-shadow: 0 5px 12px #6476530b; }
+.illustration > span { position: absolute; bottom: 0; right: 0; width: 26px; height: 26px; border-radius: 50%; border: 3px solid #f3f7f0; background: #62875b; display: grid; place-items: center; color: #fff; }
+.illustration i { position: absolute; font-size: 13px; color: #b1c2a7; font-style: normal; }.spark1 { left: -10px; top: 5px; }.spark2 { right: -9px; bottom: 19px; }
+.copy { position: relative; z-index: 1; }.copy h2 { font-size: 16px; font-weight: 550; color: #425c48; }.copy p { margin-top: 10px; color: #869684; font-size: 11px; }
+.formats { display: flex; gap: 6px; align-items: center; margin-top: 17px; color: #9aa795; font-size: 9px; }.formats span { border: 1px solid #dce5d7; padding: 2px 5px; border-radius: 3px; color: #8c9d86; background: #ffffff45; }.formats i { width: 1px; height: 9px; background: #dbe2d5; margin: 0 5px; }
+.upload { margin-left: auto; flex-shrink: 0; font-size: 12px; position: relative; z-index: 1; }.cloud { position: absolute; z-index: -1; right: 0; bottom: -45px; color: #e6eddf; }
+@media(max-width: 1050px) { .zone { padding: 25px; gap: 18px; }.illustration { display: none; }.copy h2 { font-size: 14px; } }
+@media(max-width: 600px) { .zone { flex-wrap: wrap; padding: 22px; gap: 20px; }.upload { margin-left: 0; }.formats { flex-wrap: wrap; }.copy p { line-height: 1.9; } }
