@@ -123,6 +123,22 @@ class Store:
     def chunks(self, doc_id):
         return self.query('SELECT * FROM chunks WHERE document_id=? ORDER BY ordinal', (doc_id,))
 
+    def search_chunks_exact(self, document_ids, terms, limit=8):
+        if not document_ids or not terms:
+            return []
+        matches = ' OR '.join('instr(lower(c.text), lower(?)) > 0' for _ in terms)
+        score = ' + '.join(f'CASE WHEN instr(lower(c.text), lower(?)) > 0 THEN 1 ELSE 0 END' for _ in terms)
+        document_placeholders = ','.join('?' for _ in document_ids)
+        return self.query(
+            f'''SELECT c.id AS chunk_id, c.document_id, c.text, c.location, d.name,
+                       ({score}) AS lexical_score
+                FROM chunks c JOIN documents d ON d.id=c.document_id
+                WHERE c.document_id IN ({document_placeholders}) AND ({matches})
+                ORDER BY lexical_score DESC, c.ordinal
+                LIMIT ?''',
+            (*terms, *document_ids, *terms, limit),
+        )
+
     def recover(self):
         self.execute("UPDATE documents SET status='queued', error='' WHERE deleted=0 AND status IN ('parsing','embedding','indexing')")
 

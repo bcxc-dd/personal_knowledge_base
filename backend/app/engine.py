@@ -18,6 +18,10 @@ class RetrievalResult(list):
         self.diagnostics = diagnostics or {}
 
 
+def acronym_terms(question):
+    return list(dict.fromkeys(re.findall(r'(?<![A-Za-z0-9])([A-Z][A-Z0-9]{1,})(?![A-Za-z0-9])', question)))
+
+
 class Engine:
     def __init__(self, root: Path, models=None):
         self.root = root.resolve()
@@ -149,6 +153,16 @@ class Engine:
         for index, hit in enumerate(candidates, 1):
             hit['vector_rank'] = index
             hit['vector_similarity'] = 1 - hit.get('distance', 0)
+        lexical_hits = self.store.search_chunks_exact(eligible, acronym_terms(question), limit=min(8, candidate_limit))
+        candidate_ids = {hit['chunk_id'] for hit in candidates}
+        for hit in lexical_hits:
+            hit['lexical_match'] = True
+            if hit['chunk_id'] not in candidate_ids:
+                hit['vector_rank'] = 0
+                candidates.append(hit)
+                candidate_ids.add(hit['chunk_id'])
+            else:
+                next(item for item in candidates if item['chunk_id'] == hit['chunk_id'])['lexical_match'] = True
         ranked = self.reranker.rank(question, candidates, config)
         items = ranked.items
         for index, hit in enumerate(items, 1):
@@ -162,10 +176,15 @@ class Engine:
                 selected.pop()
                 selected.append(ranked_by_id.get(vector_item['chunk_id'], vector_item))
                 selected_ids.add(vector_item['chunk_id'])
+        lexical_item = next((item for item in items if item.get('lexical_match')), None)
+        if lexical_item and lexical_item['chunk_id'] not in selected_ids and selected:
+            selected.pop()
+            selected.append(lexical_item)
+            selected_ids = {item['chunk_id'] for item in selected}
         selected.sort(key=lambda item: item.get('vector_rank', 0))
         for item in selected:
             item['selected'] = True
-        diagnostics = {'candidate_count': len(candidates), 'items': items, 'provider': ranked.provider, 'device': ranked.device, 'fallback': ranked.fallback, 'error': ranked.error}
+        diagnostics = {'candidate_count': len(candidates), 'lexical_candidate_count': len(lexical_hits), 'items': items, 'provider': ranked.provider, 'device': ranked.device, 'fallback': ranked.fallback, 'error': ranked.error}
         return RetrievalResult(selected, diagnostics)
 
     async def answer(self, question, kb_id, document_ids, conversation_id):

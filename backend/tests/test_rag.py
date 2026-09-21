@@ -98,6 +98,27 @@ def test_disabled_rerank_uses_final_evidence_limit_directly(tmp_path):
     assert result.diagnostics['provider'] == 'vector'
 
 
+def test_exact_acronym_match_is_included_when_vector_results_miss_it(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('attention.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    engine.store.replace_chunks(doc['id'], [
+        {'id': 'vector-only', 'ordinal': 0, 'location': 'page 1', 'text': 'This unrelated cache setting is popular.'},
+        {'id': 'mha-definition', 'ordinal': 1, 'location': 'page 44', 'text': 'Multi-Head Attention (MHA) gives every Q head its own K and V heads.'},
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 2})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: [{
+        'chunk_id': f'{doc["id"]}:0', 'document_id': doc['id'], 'text': 'This unrelated cache setting is popular.',
+        'distance': 0.01, 'name': 'attention.txt', 'location': 'page 1',
+    }]
+
+    result = engine.retrieve('What is MHA?', 'default', [])
+
+    assert {item['chunk_id'] for item in result} == {f'{doc["id"]}:0', f'{doc["id"]}:1'}
+
+
 def test_redacted_settings_and_unconfigured_upload(tmp_path):
     engine = make_engine(tmp_path)
     public = engine.store.settings(public=True)
