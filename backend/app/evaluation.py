@@ -96,10 +96,13 @@ def load_suite(path: Path) -> EvaluationSuite:
     return suite
 
 
-def _matches(case, item):
-    location = str(item.get('location', '')).strip()
-    text = str(item.get('text', '')).lower()
-    return location in case.expected_locations or any(term.lower() in text for term in case.expected_terms)
+def _matches(case, items):
+    values = list(items)
+    if case.expected_locations:
+        locations = {str(item.get('location', '')).strip() for item in values}
+        return all(location in locations for location in case.expected_locations)
+    terms = tuple(term.lower() for term in case.expected_terms)
+    return any(any(term in str(item.get('text', '')).lower() for term in terms) for item in values)
 
 
 def _evidence(item):
@@ -116,12 +119,12 @@ def evaluate_case(case, selected, candidates, indexed_chunks):
         stage = None if passed else 'unexpected_evidence'
         reason = '未检索到证据。' if passed else '资料不足题返回了证据。'
     else:
-        selected_match = any(_matches(case, item) for item in selected)
+        selected_match = _matches(case, selected)
         if selected_match:
             passed, stage, reason = True, None, '最终证据命中预期锚点或术语。'
-        elif not any(_matches(case, item) for item in indexed_chunks):
+        elif not _matches(case, indexed_chunks):
             passed, stage, reason = False, 'not_parsed', '预期锚点或术语不在已索引片段中。'
-        elif not any(_matches(case, item) for item in candidates):
+        elif not _matches(case, candidates):
             passed, stage, reason = False, 'not_recalled', '预期证据未进入候选集合。'
         else:
             passed, stage, reason = False, 'not_selected', '预期证据进入候选但未进入最终证据。'

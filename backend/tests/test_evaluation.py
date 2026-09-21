@@ -118,6 +118,18 @@ def test_summary_groups_pass_rate_by_category():
     assert summary['by_category']['definition'] == {'total': 2, 'passed': 1}
 
 
+def test_location_anchored_case_does_not_treat_cover_title_as_a_match():
+    case = EvaluationCase('q01', '什么是 AI Infra？', 'definition', ('第 11 页',), ('AI Infra',), ('定义',), False)
+    cover = {'chunk_id': 'cover', 'location': '第 1 页', 'text': '深入理解 AI Infra'}
+    definition = {'chunk_id': 'definition', 'location': '第 11 页', 'text': 'AI Infra 是支撑 AI 训练和推理的基础设施。'}
+    overview = {'chunk_id': 'overview', 'location': '第 13 页', 'text': '应用与任务、模型与负载。'}
+
+    result = evaluate_case(case, [cover], [cover, definition, overview], [cover, definition, overview])
+
+    assert result['passed'] is False
+    assert result['failure_stage'] == 'not_selected'
+
+
 def test_default_runner_arguments_do_not_enable_answer_generation():
     runner = load_runner()
 

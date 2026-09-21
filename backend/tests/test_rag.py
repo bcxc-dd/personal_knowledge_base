@@ -119,6 +119,48 @@ def test_exact_acronym_match_is_included_when_vector_results_miss_it(tmp_path):
     assert {item['chunk_id'] for item in result} == {f'{doc["id"]}:0', f'{doc["id"]}:1'}
 
 
+def test_lexical_terms_preserve_multiword_technical_phrase():
+    from app.engine import lexical_terms
+
+    assert lexical_terms('什么是 AI Infra？') == ['AI', 'AI Infra']
+
+
+def test_retrieval_preserves_two_lexical_evidence_items(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('infra.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 3})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': 'vector-a', 'document_id': doc['id'], 'text': 'unrelated a', 'distance': 0.01, 'name': 'infra.txt', 'location': '第 2 页'},
+        {'chunk_id': 'vector-b', 'document_id': doc['id'], 'text': 'unrelated b', 'distance': 0.02, 'name': 'infra.txt', 'location': '第 3 页'},
+        {'chunk_id': 'vector-c', 'document_id': doc['id'], 'text': 'unrelated c', 'distance': 0.03, 'name': 'infra.txt', 'location': '第 4 页'},
+    ]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: [
+        {'chunk_id': 'definition', 'document_id': doc['id'], 'text': 'AI Infra 是基础设施', 'name': 'infra.txt', 'location': '第 11 页'},
+        {'chunk_id': 'overview', 'document_id': doc['id'], 'text': 'AI Infra 包含六层', 'name': 'infra.txt', 'location': '第 13 页'},
+    ]
+
+    result = engine.retrieve('什么是 AI Infra？', 'default', [])
+
+    assert {'definition', 'overview'} <= {item['chunk_id'] for item in result}
+
+
+def test_diverse_lexical_hits_keep_first_hit_per_page():
+    from app.engine import diverse_lexical_hits
+
+    hits = diverse_lexical_hits([
+        {'chunk_id': 'cover', 'location': '第 1 页'},
+        {'chunk_id': 'preface-a', 'location': '第 2 页'},
+        {'chunk_id': 'preface-b', 'location': '第 2 页'},
+        {'chunk_id': 'definition', 'location': '第 11 页'},
+        {'chunk_id': 'overview', 'location': '第 13 页'},
+    ], 4)
+
+    assert [hit['chunk_id'] for hit in hits] == ['cover', 'preface-a', 'definition', 'overview']
+
+
 def test_redacted_settings_and_unconfigured_upload(tmp_path):
     engine = make_engine(tmp_path)
     public = engine.store.settings(public=True)

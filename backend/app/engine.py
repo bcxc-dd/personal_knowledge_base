@@ -22,6 +22,24 @@ def acronym_terms(question):
     return list(dict.fromkeys(re.findall(r'(?<![A-Za-z0-9])([A-Z][A-Z0-9]{1,})(?![A-Za-z0-9])', question)))
 
 
+def lexical_terms(question):
+    phrases = re.findall(r'(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]*(?:[ -][A-Za-z][A-Za-z0-9]*)+)(?![A-Za-z0-9])', question)
+    return list(dict.fromkeys([*acronym_terms(question), *phrases]))
+
+
+def diverse_lexical_hits(hits, limit):
+    selected, locations = [], set()
+    for hit in hits:
+        location = hit.get('location')
+        if location in locations:
+            continue
+        locations.add(location)
+        selected.append(hit)
+        if len(selected) == limit:
+            break
+    return selected
+
+
 class Engine:
     def __init__(self, root: Path, models=None):
         self.root = root.resolve()
@@ -153,7 +171,10 @@ class Engine:
         for index, hit in enumerate(candidates, 1):
             hit['vector_rank'] = index
             hit['vector_similarity'] = 1 - hit.get('distance', 0)
-        lexical_hits = self.store.search_chunks_exact(eligible, acronym_terms(question), limit=min(8, candidate_limit))
+        lexical_hits = diverse_lexical_hits(
+            self.store.search_chunks_exact(eligible, lexical_terms(question), limit=100),
+            candidate_limit,
+        )
         candidate_ids = {hit['chunk_id'] for hit in candidates}
         for hit in lexical_hits:
             hit['lexical_match'] = True
@@ -176,9 +197,13 @@ class Engine:
                 selected.pop()
                 selected.append(ranked_by_id.get(vector_item['chunk_id'], vector_item))
                 selected_ids.add(vector_item['chunk_id'])
-        lexical_item = next((item for item in items if item.get('lexical_match')), None)
-        if lexical_item and lexical_item['chunk_id'] not in selected_ids and selected:
-            selected.pop()
+        for lexical_item in (item for item in items if item.get('lexical_match')):
+            if lexical_item['chunk_id'] in selected_ids or not selected:
+                continue
+            replacement = next((item for item in reversed(selected) if not item.get('lexical_match')), None)
+            if replacement is None:
+                break
+            selected.remove(replacement)
             selected.append(lexical_item)
             selected_ids = {item['chunk_id'] for item in selected}
         selected.sort(key=lambda item: item.get('vector_rank', 0))
