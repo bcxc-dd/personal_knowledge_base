@@ -125,6 +125,20 @@ def test_lexical_terms_preserve_multiword_technical_phrase():
     assert lexical_terms('什么是 AI Infra？') == ['AI', 'AI Infra']
 
 
+def test_normalize_bare_acronym_as_definition_request():
+    from app.engine import normalize_question
+
+    assert normalize_question(' MHA ') == 'MHA 是什么？请解释该术语的定义、机制和作用。'
+
+
+def test_normalize_question_leaves_complete_and_non_acronym_inputs_unchanged():
+    from app.engine import normalize_question
+
+    assert normalize_question('MHA是什么') == 'MHA是什么'
+    assert normalize_question('AI Infra') == 'AI Infra'
+    assert normalize_question('A100') == 'A100'
+
+
 def test_retrieval_preserves_two_lexical_evidence_items(tmp_path):
     engine = make_engine(tmp_path)
     doc, _ = engine.upload('infra.txt', b'placeholder', 'default')
