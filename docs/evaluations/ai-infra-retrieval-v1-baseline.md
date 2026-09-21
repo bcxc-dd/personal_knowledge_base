@@ -1,7 +1,7 @@
 # AI-Infra 检索评测基线
 
-日期：2026-09-21  
-文档：`AI-Infra-Book.pdf`  
+日期：2026-09-21
+文档：`AI-Infra-Book.pdf`
 SHA-256：`cdbb925efe420ab0c65a245068770e443b4f52995e902c56669324329725e217`
 
 ## 命令
