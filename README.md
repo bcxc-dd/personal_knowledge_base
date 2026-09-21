@@ -78,6 +78,24 @@ DeepSeek 当前公开接口和模型名参考：[官方接入说明](https://api
 
 ## 验证
 
+### AI-Infra 检索评测
+
+评测集只覆盖本机的 `AI-Infra-Book.pdf`，用于检查学习概念时的证据召回。默认命令只运行本地检索，不会调用回答服务：
+
+```powershell
+.venv\Scripts\python.exe scripts\evaluate_retrieval.py
+```
+
+结果会写入 `test-results/ai-infra-retrieval-*.json`。报告中的 `failure_stage` 区分资料未解析、未召回、候选未进入最终证据，以及资料不足题却返回证据。
+
+以下命令会为 25 道题调用当前配置的回答服务，可能产生费用；仅在需要人工填写回答清晰度和引用贴切度时使用：
+
+```powershell
+.venv\Scripts\python.exe scripts\evaluate_retrieval.py --with-answer
+```
+
+如果替换了 PDF，评测会因 SHA-256 不一致而停止。应先人工审阅新内容和预期页码，再有意识地更新评测集。
+
 ```powershell
 .venv\Scripts\python.exe -m pytest -q
 npm test

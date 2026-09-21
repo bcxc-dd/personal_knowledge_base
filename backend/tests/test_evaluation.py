@@ -1,9 +1,18 @@
 import json
+import importlib.util
 from pathlib import Path
 
 import pytest
 
 from app.evaluation import EvaluationCase, evaluate_case, load_suite, summarize
+
+
+def load_runner():
+    path = Path('scripts/evaluate_retrieval.py')
+    spec = importlib.util.spec_from_file_location('evaluate_retrieval', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def write_suite(path, cases, sha='a' * 64):
@@ -107,3 +116,11 @@ def test_summary_groups_pass_rate_by_category():
     assert summary['total'] == 2
     assert summary['passed'] == 1
     assert summary['by_category']['definition'] == {'total': 2, 'passed': 1}
+
+
+def test_default_runner_arguments_do_not_enable_answer_generation():
+    runner = load_runner()
+
+    args = runner.parse_args([])
+
+    assert args.with_answer is False
