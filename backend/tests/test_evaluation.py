@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -59,3 +60,12 @@ def test_load_suite_returns_immutable_cases_for_valid_suite(tmp_path):
 
     assert len(suite.cases) == 25
     assert suite.cases[-1].expect_no_evidence is True
+
+
+def test_committed_ai_infra_suite_has_balanced_learning_coverage():
+    suite = load_suite(Path('docs/evaluations/ai-infra-retrieval-v1.json'))
+
+    assert len(suite.cases) == 25
+    assert {case.category for case in suite.cases} == {
+        'definition', 'mechanism', 'comparison', 'summary', 'acronym', 'insufficient_evidence',
+    }
