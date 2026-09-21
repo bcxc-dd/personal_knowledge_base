@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from app.evaluation import load_suite
+from app.evaluation import EvaluationCase, evaluate_case, load_suite, summarize
 
 
 def write_suite(path, cases, sha='a' * 64):
@@ -69,3 +69,41 @@ def test_committed_ai_infra_suite_has_balanced_learning_coverage():
     assert {case.category for case in suite.cases} == {
         'definition', 'mechanism', 'comparison', 'summary', 'acronym', 'insufficient_evidence',
     }
+
+
+def mha_case():
+    return EvaluationCase('q19', 'MHA 是什么？', 'acronym', ('第 44 页',), ('MHA',), ('多头注意力',), False)
+
+
+def test_classifies_anchor_existing_but_not_recalled():
+    target = {'chunk_id': 'target', 'location': '第 44 页', 'text': 'MHA 定义'}
+
+    result = evaluate_case(mha_case(), selected=[], candidates=[], indexed_chunks=[target])
+
+    assert result['passed'] is False
+    assert result['failure_stage'] == 'not_recalled'
+
+
+def test_classifies_candidate_ranked_out_of_final_evidence():
+    target = {'chunk_id': 'target', 'location': '第 44 页', 'text': 'MHA 定义'}
+
+    result = evaluate_case(mha_case(), selected=[], candidates=[target], indexed_chunks=[target])
+
+    assert result['failure_stage'] == 'not_selected'
+
+
+def test_no_evidence_case_fails_when_retrieval_returns_a_chunk():
+    case = EvaluationCase('q25', 'ZZQ 是什么？', 'insufficient_evidence', (), (), (), True)
+
+    result = evaluate_case(case, [{'chunk_id': 'x', 'location': '第 11 页', 'text': 'AI Infra'}], [], [])
+
+    assert result['passed'] is False
+    assert result['failure_stage'] == 'unexpected_evidence'
+
+
+def test_summary_groups_pass_rate_by_category():
+    summary = summarize([{'category': 'definition', 'passed': True}, {'category': 'definition', 'passed': False}])
+
+    assert summary['total'] == 2
+    assert summary['passed'] == 1
+    assert summary['by_category']['definition'] == {'total': 2, 'passed': 1}

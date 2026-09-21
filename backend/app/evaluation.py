@@ -94,3 +94,52 @@ def load_suite(path: Path) -> EvaluationSuite:
         raise ValueError(f'评测集缺少字段：{exc.args[0]}。') from exc
     validate_suite(suite)
     return suite
+
+
+def _matches(case, item):
+    location = str(item.get('location', '')).strip()
+    text = str(item.get('text', '')).lower()
+    return location in case.expected_locations or any(term.lower() in text for term in case.expected_terms)
+
+
+def _evidence(item):
+    keys = ('chunk_id', 'document_id', 'name', 'location', 'text', 'vector_rank', 'vector_similarity',
+            'lexical_match', 'rerank_rank', 'rerank_score', 'selected')
+    return {key: item[key] for key in keys if key in item}
+
+
+def evaluate_case(case, selected, candidates, indexed_chunks):
+    selected = list(selected)
+    candidates = list(candidates)
+    if case.expect_no_evidence:
+        passed = not selected
+        stage = None if passed else 'unexpected_evidence'
+        reason = '未检索到证据。' if passed else '资料不足题返回了证据。'
+    else:
+        selected_match = any(_matches(case, item) for item in selected)
+        if selected_match:
+            passed, stage, reason = True, None, '最终证据命中预期锚点或术语。'
+        elif not any(_matches(case, item) for item in indexed_chunks):
+            passed, stage, reason = False, 'not_parsed', '预期锚点或术语不在已索引片段中。'
+        elif not any(_matches(case, item) for item in candidates):
+            passed, stage, reason = False, 'not_recalled', '预期证据未进入候选集合。'
+        else:
+            passed, stage, reason = False, 'not_selected', '预期证据进入候选但未进入最终证据。'
+    return {
+        'id': case.id, 'question': case.question, 'category': case.category, 'passed': passed,
+        'match_reason': reason, 'failure_stage': stage,
+        'selected_ids': [item.get('chunk_id') for item in selected],
+        'candidate_ids': [item.get('chunk_id') for item in candidates],
+        'selected_evidence': [_evidence(item) for item in selected],
+        'candidate_evidence': [_evidence(item) for item in candidates],
+    }
+
+
+def summarize(results):
+    values = list(results)
+    by_category = {}
+    for result in values:
+        bucket = by_category.setdefault(result['category'], {'total': 0, 'passed': 0})
+        bucket['total'] += 1
+        bucket['passed'] += int(bool(result['passed']))
+    return {'total': len(values), 'passed': sum(bool(item['passed']) for item in values), 'by_category': by_category}
