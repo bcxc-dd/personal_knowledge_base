@@ -33,6 +33,7 @@ def normal_case(case_id):
         'expected_terms': ['AI Infra'],
         'must_cover': ['基础设施'],
         'expect_no_evidence': False,
+        'assessment_mode': 'automatic',
     }
 
 
@@ -62,6 +63,7 @@ def test_load_suite_returns_immutable_cases_for_valid_suite(tmp_path):
         'expected_terms': [],
         'must_cover': [],
         'expect_no_evidence': True,
+        'assessment_mode': 'diagnostic',
     }]
     write_suite(path, cases)
 
@@ -81,7 +83,9 @@ def test_committed_ai_infra_suite_has_balanced_learning_coverage():
 
 
 def mha_case():
-    return EvaluationCase('q19', 'MHA 是什么？', 'acronym', ('第 44 页',), ('MHA',), ('多头注意力',), False)
+    return EvaluationCase(
+        'q19', 'MHA 是什么？', 'acronym', ('第 44 页',), ('MHA',), ('多头注意力',), False, 'automatic',
+    )
 
 
 def test_classifies_anchor_existing_but_not_recalled():
@@ -102,7 +106,7 @@ def test_classifies_candidate_ranked_out_of_final_evidence():
 
 
 def test_no_evidence_case_fails_when_retrieval_returns_a_chunk():
-    case = EvaluationCase('q25', 'ZZQ 是什么？', 'insufficient_evidence', (), (), (), True)
+    case = EvaluationCase('q25', 'ZZQ 是什么？', 'insufficient_evidence', (), (), (), True, 'diagnostic')
 
     result = evaluate_case(case, [{'chunk_id': 'x', 'location': '第 11 页', 'text': 'AI Infra'}], [], [])
 
@@ -110,16 +114,31 @@ def test_no_evidence_case_fails_when_retrieval_returns_a_chunk():
     assert result['failure_stage'] == 'unexpected_evidence'
 
 
-def test_summary_groups_pass_rate_by_category():
-    summary = summarize([{'category': 'definition', 'passed': True}, {'category': 'definition', 'passed': False}])
+def test_summary_scores_only_automatic_cases_and_separates_review_modes():
+    summary = summarize([
+        {'id': 'q01', 'category': 'definition', 'passed': True, 'assessment_mode': 'automatic'},
+        {'id': 'q02', 'category': 'definition', 'passed': False, 'assessment_mode': 'automatic'},
+        {'id': 'q15', 'category': 'summary', 'passed': True, 'assessment_mode': 'manual_review'},
+        {'id': 'q25', 'category': 'insufficient_evidence', 'passed': False, 'assessment_mode': 'diagnostic'},
+    ])
 
-    assert summary['total'] == 2
-    assert summary['passed'] == 1
-    assert summary['by_category']['definition'] == {'total': 2, 'passed': 1}
+    assert summary['scored'] == {
+        'total': 2,
+        'passed': 1,
+        'by_category': {'definition': {'total': 2, 'passed': 1}},
+    }
+    assert summary['manual_review'] == {'total': 1, 'case_ids': ['q15']}
+    assert summary['diagnostic'] == {
+        'total': 1,
+        'passed': 0,
+        'by_category': {'insufficient_evidence': {'total': 1, 'passed': 0}},
+    }
 
 
 def test_location_anchored_case_does_not_treat_cover_title_as_a_match():
-    case = EvaluationCase('q01', '什么是 AI Infra？', 'definition', ('第 11 页',), ('AI Infra',), ('定义',), False)
+    case = EvaluationCase(
+        'q01', '什么是 AI Infra？', 'definition', ('第 11 页',), ('AI Infra',), ('定义',), False, 'automatic',
+    )
     cover = {'chunk_id': 'cover', 'location': '第 1 页', 'text': '深入理解 AI Infra'}
     definition = {'chunk_id': 'definition', 'location': '第 11 页', 'text': 'AI Infra 是支撑 AI 训练和推理的基础设施。'}
     overview = {'chunk_id': 'overview', 'location': '第 13 页', 'text': '应用与任务、模型与负载。'}

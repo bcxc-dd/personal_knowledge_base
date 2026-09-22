@@ -7,6 +7,7 @@ from pathlib import Path
 ALLOWED_CATEGORIES = {
     'definition', 'mechanism', 'comparison', 'summary', 'acronym', 'insufficient_evidence',
 }
+ALLOWED_ASSESSMENT_MODES = {'automatic', 'manual_review', 'diagnostic'}
 SHA256_PATTERN = re.compile(r'^[0-9a-f]{64}$')
 
 
@@ -19,6 +20,7 @@ class EvaluationCase:
     expected_terms: tuple[str, ...]
     must_cover: tuple[str, ...]
     expect_no_evidence: bool
+    assessment_mode: str
 
 
 @dataclass(frozen=True)
@@ -50,12 +52,16 @@ def _case(raw):
     no_evidence = raw.get('expect_no_evidence')
     if not isinstance(no_evidence, bool):
         raise ValueError(f'题目 {case_id} 的 expect_no_evidence 必须是布尔值。')
+    assessment_mode = raw.get('assessment_mode')
+    if assessment_mode not in ALLOWED_ASSESSMENT_MODES:
+        raise ValueError(f'题目 {case_id} 的 assessment_mode 不受支持。')
     return EvaluationCase(
         id=case_id.strip(), question=question.strip(), category=category,
         expected_locations=_strings(raw.get('expected_locations'), 'expected_locations', case_id),
         expected_terms=_strings(raw.get('expected_terms'), 'expected_terms', case_id),
         must_cover=_strings(raw.get('must_cover'), 'must_cover', case_id),
         expect_no_evidence=no_evidence,
+        assessment_mode=assessment_mode,
     )
 
 
@@ -78,6 +84,10 @@ def validate_suite(suite):
                 raise ValueError(f'题目 {case.id} 的资料不足题不能包含预期证据。')
         elif not case.expected_locations and not case.expected_terms:
             raise ValueError(f'题目 {case.id} 必须包含预期定位或术语。')
+        if case.assessment_mode == 'diagnostic' and not case.expect_no_evidence:
+            raise ValueError(f'题目 {case.id} 的诊断项必须标记为资料不足。')
+        if case.expect_no_evidence and case.assessment_mode != 'diagnostic':
+            raise ValueError(f'题目 {case.id} 的资料不足题必须作为诊断项。')
 
 
 def load_suite(path: Path) -> EvaluationSuite:
@@ -130,6 +140,7 @@ def evaluate_case(case, selected, candidates, indexed_chunks):
             passed, stage, reason = False, 'not_selected', '预期证据进入候选但未进入最终证据。'
     return {
         'id': case.id, 'question': case.question, 'category': case.category, 'passed': passed,
+        'assessment_mode': case.assessment_mode,
         'match_reason': reason, 'failure_stage': stage,
         'selected_ids': [item.get('chunk_id') for item in selected],
         'candidate_ids': [item.get('chunk_id') for item in candidates],
@@ -140,9 +151,24 @@ def evaluate_case(case, selected, candidates, indexed_chunks):
 
 def summarize(results):
     values = list(results)
-    by_category = {}
-    for result in values:
-        bucket = by_category.setdefault(result['category'], {'total': 0, 'passed': 0})
-        bucket['total'] += 1
-        bucket['passed'] += int(bool(result['passed']))
-    return {'total': len(values), 'passed': sum(bool(item['passed']) for item in values), 'by_category': by_category}
+    automatic = [result for result in values if result['assessment_mode'] == 'automatic']
+    diagnostic = [result for result in values if result['assessment_mode'] == 'diagnostic']
+
+    def score(items):
+        by_category = {}
+        for result in items:
+            bucket = by_category.setdefault(result['category'], {'total': 0, 'passed': 0})
+            bucket['total'] += 1
+            bucket['passed'] += int(bool(result['passed']))
+        return {
+            'total': len(items),
+            'passed': sum(bool(item['passed']) for item in items),
+            'by_category': by_category,
+        }
+
+    manual_review = [result for result in values if result['assessment_mode'] == 'manual_review']
+    return {
+        'scored': score(automatic),
+        'manual_review': {'total': len(manual_review), 'case_ids': [result['id'] for result in manual_review]},
+        'diagnostic': score(diagnostic),
+    }
