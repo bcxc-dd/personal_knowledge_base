@@ -125,6 +125,102 @@ def test_lexical_terms_preserve_multiword_technical_phrase():
     assert lexical_terms('什么是 AI Infra？') == ['AI', 'AI Infra']
 
 
+def test_lexical_terms_include_chinese_technical_ngrams():
+    from app.engine import lexical_terms
+
+    terms = lexical_terms('预填充和解码分别做什么？')
+
+    assert {'预填充', '解码'} <= set(terms)
+
+
+def test_lexical_terms_keep_chinese_terms_targeted_and_preserve_acronym_priority():
+    from app.engine import lexical_terms
+
+    assert {'六层', '六层分工'} <= set(lexical_terms('从应用到硬件的六层分工分别是什么？'))
+    assert {'训练', '推理', '模型参数'} <= set(lexical_terms('训练和推理在模型参数的作用上有什么区别？'))
+    assert lexical_terms('MHA 是什么？它的 K、V 是如何组织的？') == ['MHA']
+
+
+def test_chinese_lexical_hit_is_preserved_when_vector_results_miss_definition(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('inference.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    engine.store.replace_chunks(doc['id'], [
+        {'id': 'vector-a', 'ordinal': 0, 'location': '第 50 页', 'text': '无关的向量结果 A'},
+        {'id': 'vector-b', 'ordinal': 1, 'location': '第 51 页', 'text': '无关的向量结果 B'},
+        {'id': 'vector-c', 'ordinal': 2, 'location': '第 52 页', 'text': '无关的向量结果 C'},
+        {'id': 'prefill-definition', 'ordinal': 3, 'location': '第 14 页', 'text': '预填充处理输入 token，解码逐步生成新的 token。'},
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 3})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': f'{doc["id"]}:0', 'document_id': doc['id'], 'text': '无关的向量结果 A', 'distance': 0.01, 'name': 'inference.txt', 'location': '第 50 页'},
+        {'chunk_id': f'{doc["id"]}:1', 'document_id': doc['id'], 'text': '无关的向量结果 B', 'distance': 0.02, 'name': 'inference.txt', 'location': '第 51 页'},
+        {'chunk_id': f'{doc["id"]}:2', 'document_id': doc['id'], 'text': '无关的向量结果 C', 'distance': 0.03, 'name': 'inference.txt', 'location': '第 52 页'},
+    ]
+
+    result = engine.retrieve('预填充和解码分别做什么？', 'default', [])
+
+    assert f'{doc["id"]}:3' in {item['chunk_id'] for item in result}
+
+
+def test_lexical_evidence_does_not_replace_the_top_vector_result(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('paper.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 1})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: [{
+        'chunk_id': 'top-vector', 'document_id': doc['id'], 'text': '最相关的向量证据',
+        'distance': 0.01, 'name': 'paper.txt', 'location': '第 1 页',
+    }]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: [{
+        'chunk_id': 'lexical-hit', 'document_id': doc['id'], 'text': '词法命中的其他证据',
+        'name': 'paper.txt', 'location': '第 2 页', 'lexical_score': 2,
+    }]
+
+    result = engine.retrieve('预填充和解码分别做什么？', 'default', [])
+
+    assert [item['chunk_id'] for item in result] == ['top-vector']
+
+
+def test_definition_question_prioritizes_definition_over_incidental_term_match(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('infra.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 3})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': 'vector-a', 'document_id': doc['id'], 'text': '无关 A', 'distance': 0.01, 'name': 'infra.txt', 'location': '第 1 页'},
+        {'chunk_id': 'vector-b', 'document_id': doc['id'], 'text': '无关 B', 'distance': 0.02, 'name': 'infra.txt', 'location': '第 2 页'},
+        {'chunk_id': 'vector-c', 'document_id': doc['id'], 'text': '无关 C', 'distance': 0.03, 'name': 'infra.txt', 'location': '第 3 页'},
+    ]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: [
+        {'chunk_id': 'cover', 'document_id': doc['id'], 'text': '深入理解 AI Infra', 'name': 'infra.txt', 'location': '第 4 页', 'lexical_score': 2},
+        {'chunk_id': 'definition', 'document_id': doc['id'], 'text': 'AI Infra 是支撑训练与推理的基础设施。', 'name': 'infra.txt', 'location': '第 11 页', 'lexical_score': 2},
+    ]
+
+    result = engine.retrieve('什么是 AI Infra？', 'default', [])
+
+    assert 'definition' in {item['chunk_id'] for item in result}
+
+
+def test_definition_prioritization_skips_multi_part_definition_question():
+    from app.engine import prioritize_definition_hits
+
+    hits = [
+        {'chunk_id': 'first', 'text': 'KV 缓存用于复用状态。', 'lexical_score': 2},
+        {'chunk_id': 'second', 'text': 'KV 缓存是另一种表述。', 'lexical_score': 2},
+    ]
+
+    result = prioritize_definition_hits('KV 缓存是什么，为什么生成时要复用它？', ['KV', '缓存'], hits)
+
+    assert [hit['chunk_id'] for hit in result] == ['first', 'second']
+
+
 def test_normalize_bare_acronym_as_definition_request():
     from app.engine import normalize_question
 
@@ -139,7 +235,7 @@ def test_normalize_question_leaves_complete_and_non_acronym_inputs_unchanged():
     assert normalize_question('A100') == 'A100'
 
 
-def test_retrieval_preserves_two_lexical_evidence_items(tmp_path):
+def test_retrieval_preserves_lexical_evidence_without_displacing_top_vectors(tmp_path):
     engine = make_engine(tmp_path)
     doc, _ = engine.upload('infra.txt', b'placeholder', 'default')
     from app.models import fingerprint
@@ -158,7 +254,8 @@ def test_retrieval_preserves_two_lexical_evidence_items(tmp_path):
 
     result = engine.retrieve('什么是 AI Infra？', 'default', [])
 
-    assert {'definition', 'overview'} <= {item['chunk_id'] for item in result}
+    assert 'definition' in {item['chunk_id'] for item in result}
+    assert {'vector-a', 'vector-b'} <= {item['chunk_id'] for item in result}
 
 
 def test_diverse_lexical_hits_keep_first_hit_per_page():

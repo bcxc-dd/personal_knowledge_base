@@ -22,9 +22,27 @@ def acronym_terms(question):
     return list(dict.fromkeys(re.findall(r'(?<![A-Za-z0-9])([A-Z][A-Z0-9]{1,})(?![A-Za-z0-9])', question)))
 
 
-def lexical_terms(question):
+def latin_technical_terms(question):
     phrases = re.findall(r'(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]*(?:[ -][A-Za-z][A-Za-z0-9]*)+)(?![A-Za-z0-9])', question)
-    return list(dict.fromkeys([*acronym_terms(question), *phrases]))
+    words = [] if phrases else re.findall(r'(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9-]{2,})(?![A-Za-z0-9])', question)
+    return list(dict.fromkeys([*acronym_terms(question), *phrases, *words]))
+
+
+def chinese_technical_terms(question):
+    content = re.sub(
+        r'第\s*\d+\s*章|什么是|是什么|为什么|有什么|怎么|如何|请|书中|分别|各自|主要|哪些|'
+        r'什么|从|到|和|与|及|、|在|的|对|相比|吗|呢|它|会|改变|导致|影响|做|组织|作用',
+        ' ',
+        question,
+    )
+    terms = re.findall(r'[\u4e00-\u9fff]{2,}', content)
+    terms.extend(re.findall(r'[一二三四五六七八九十\d]+层', question))
+    return list(dict.fromkeys(terms))
+
+
+def lexical_terms(question):
+    latin_terms = latin_technical_terms(question)
+    return list(dict.fromkeys([*latin_terms, *chinese_technical_terms(question)]))
 
 
 def normalize_question(question):
@@ -45,6 +63,20 @@ def diverse_lexical_hits(hits, limit):
         if len(selected) == limit:
             break
     return selected
+
+
+def prioritize_definition_hits(question, terms, hits):
+    if not re.search(r'什么是|是什么', question) or re.search(r'为什么|如何', question):
+        return hits
+
+    definition_patterns = [re.compile(rf'{re.escape(term)}\s*(?:是|指|称)', re.IGNORECASE) for term in terms if len(term) >= 2]
+    return sorted(
+        hits,
+        key=lambda hit: (
+            not any(pattern.search(hit['text']) for pattern in definition_patterns),
+            -hit.get('lexical_score', 0),
+        ),
+    )
 
 
 class Engine:
@@ -178,8 +210,13 @@ class Engine:
         for index, hit in enumerate(candidates, 1):
             hit['vector_rank'] = index
             hit['vector_similarity'] = 1 - hit.get('distance', 0)
+        terms = lexical_terms(question)
+        lexical_hits = self.store.search_chunks_exact(eligible, terms, limit=100)
+        if chinese_technical_terms(question):
+            lexical_hits = [hit for hit in lexical_hits if hit.get('lexical_score', 0) >= 2]
+        lexical_hits = prioritize_definition_hits(question, terms, lexical_hits)
         lexical_hits = diverse_lexical_hits(
-            self.store.search_chunks_exact(eligible, lexical_terms(question), limit=100),
+            lexical_hits,
             candidate_limit,
         )
         candidate_ids = {hit['chunk_id'] for hit in candidates}
@@ -198,16 +235,18 @@ class Engine:
             hit['selected'] = False
         selected = list(items[:evidence_limit])
         selected_ids = {item['chunk_id'] for item in selected}
+        protected_vector_ids = {item['chunk_id'] for item in candidates[:min(2, evidence_limit)]}
         ranked_by_id = {item['chunk_id']: item for item in items}
         for vector_item in candidates[:min(2, evidence_limit)]:
             if vector_item['chunk_id'] not in selected_ids and selected:
                 selected.pop()
                 selected.append(ranked_by_id.get(vector_item['chunk_id'], vector_item))
                 selected_ids.add(vector_item['chunk_id'])
-        for lexical_item in (item for item in items if item.get('lexical_match')):
+        for lexical_source in lexical_hits:
+            lexical_item = ranked_by_id.get(lexical_source['chunk_id'], lexical_source)
             if lexical_item['chunk_id'] in selected_ids or not selected:
                 continue
-            replacement = next((item for item in reversed(selected) if not item.get('lexical_match')), None)
+            replacement = next((item for item in reversed(selected) if item['chunk_id'] not in protected_vector_ids and not item.get('lexical_match')), None)
             if replacement is None:
                 break
             selected.remove(replacement)
