@@ -125,6 +125,12 @@ def test_lexical_terms_preserve_multiword_technical_phrase():
     assert lexical_terms('什么是 AI Infra？') == ['AI', 'AI Infra']
 
 
+def test_lexical_terms_extract_chinese_technical_terms_without_question_words():
+    from app.engine import lexical_terms
+
+    assert lexical_terms('预填充和解码分别做什么？') == ['预填充', '解码']
+
+
 def test_normalize_bare_acronym_as_definition_request():
     from app.engine import normalize_question
 

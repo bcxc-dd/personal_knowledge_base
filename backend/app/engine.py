@@ -11,21 +11,13 @@ from .store import Store, uid, now
 from .vectors import VectorStore
 from .reranker import Reranker
 from .retrieval import RRF_K, fuse_candidates
+from .terms import acronym_terms, lexical_terms
 
 
 class RetrievalResult(list):
     def __init__(self, items=(), diagnostics=None):
         super().__init__(items)
         self.diagnostics = diagnostics or {}
-
-
-def acronym_terms(question):
-    return list(dict.fromkeys(re.findall(r'(?<![A-Za-z0-9])([A-Z][A-Z0-9]{1,})(?![A-Za-z0-9])', question)))
-
-
-def lexical_terms(question):
-    phrases = re.findall(r'(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9]*(?:[ -][A-Za-z][A-Za-z0-9]*)+)(?![A-Za-z0-9])', question)
-    return list(dict.fromkeys([*acronym_terms(question), *phrases]))
 
 
 def normalize_question(question):
