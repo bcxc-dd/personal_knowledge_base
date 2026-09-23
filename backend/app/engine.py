@@ -12,6 +12,7 @@ from .vectors import VectorStore
 from .reranker import Reranker
 from .retrieval import RRF_K, fuse_candidates
 from .terms import acronym_terms, lexical_terms
+from .evidence import assess_evidence
 
 
 class RetrievalResult(list):
@@ -214,9 +215,17 @@ class Engine:
             retrieval_query = '\n'.join([m['content'][:500] for m in history if m['role'] == 'user'][-2:] + [normalized_question])
             retrieved = await anyio.to_thread.run_sync(lambda: self.retrieve(retrieval_query, kb_id, document_ids, config), abandon_on_cancel=True)
             hits = list(retrieved)
-            citations = [{**h, 'id': i + 1} for i, h in enumerate(hits)]
-            yield {'event': 'sources', 'data': {'citations': citations, 'retrieval_diagnostics': retrieved.diagnostics}}
-            if not hits:
+            all_citations = [{**h, 'id': i + 1} for i, h in enumerate(hits)]
+            assessed = assess_evidence(normalized_question, all_citations)
+            assessment = assessed.to_dict()
+            retrieved.diagnostics['evidence_assessment'] = assessment
+            citations = [citation for citation in all_citations if citation['chunk_id'] in assessed.evidence_chunk_ids]
+            yield {'event': 'sources', 'data': {'citations': citations, 'retrieval_diagnostics': retrieved.diagnostics, 'evidence_assessment': assessment}}
+            if assessed.status == 'insufficient':
+                missing = '；'.join(assessed.unsupported_subquestions)
+                content = f'现有资料不足以回答：{missing}'
+                yield {'event': 'token', 'data': content}
+            elif not hits:
                 content = '当前范围内没有可用于回答的资料。请先上传文件，等待索引完成；如果修改过向量模型，请在资料库重新处理文件。'
                 yield {'event': 'token', 'data': content}
             else:
@@ -240,7 +249,7 @@ class Engine:
                     raise ModelError('回答期间来源资料已删除，请重新提问。')
             self.store.add_message(conversation_id, 'assistant', content, citations)
             completed = True
-            yield {'event': 'done', 'data': {'conversation_id': conversation_id, 'content': content, 'citations': citations, 'warning': warning if hits else ''}}
+            yield {'event': 'done', 'data': {'conversation_id': conversation_id, 'content': content, 'citations': citations, 'warning': warning if citations else '', 'evidence_assessment': assessment}}
         except GeneratorExit:
             raise
         except Exception as exc:
