@@ -54,6 +54,9 @@ class Store:
                 );
                 CREATE INDEX IF NOT EXISTS notes_updated ON notes(updated_at);
             ''')
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(messages)')}
+            if 'evidence_assessment' not in columns:
+                db.execute("ALTER TABLE messages ADD COLUMN evidence_assessment TEXT NOT NULL DEFAULT '{}'")
             db.execute('INSERT OR IGNORE INTO knowledge_bases VALUES (?, ?, ?)', ('default', '我的知识库', now()))
 
     @contextmanager
@@ -151,7 +154,7 @@ class Store:
         return value
 
     def add_message(self, conversation_id, role, content, citations=None, status='complete'):
-        self.execute('INSERT INTO messages VALUES (?,?,?,?,?,?,?)', (uid(), conversation_id, role, content, json.dumps(citations or [], ensure_ascii=False), status, now()))
+        self.execute('INSERT INTO messages(id,conversation_id,role,content,citations,status,created_at) VALUES (?,?,?,?,?,?,?)', (uid(), conversation_id, role, content, json.dumps(citations or [], ensure_ascii=False), status, now()))
 
     def messages(self, conversation_id):
         messages = self.query('SELECT * FROM messages WHERE conversation_id=? ORDER BY rowid', (conversation_id,))
