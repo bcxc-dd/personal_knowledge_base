@@ -10,6 +10,7 @@ from .parsing import parse_file, split_sections
 from .store import Store, uid, now
 from .vectors import VectorStore
 from .reranker import Reranker
+from .retrieval import RRF_K, fuse_candidates
 
 
 class RetrievalResult(list):
@@ -173,50 +174,35 @@ class Engine:
         evidence_limit = int(config.get('reranker_evidence', 8))
         reranker_enabled = bool(config.get('reranker_enabled', False))
         candidate_limit = int(config.get('reranker_candidates', 20)) if reranker_enabled else evidence_limit
-        candidates = self.vectors.search(fp, vectors[0], eligible, limit=candidate_limit)
-        candidates = [h for h in candidates if self.store.document(h['document_id'])]
-        for index, hit in enumerate(candidates, 1):
-            hit['vector_rank'] = index
-            hit['vector_similarity'] = 1 - hit.get('distance', 0)
+        vector_hits = self.vectors.search(fp, vectors[0], eligible, limit=candidate_limit)
+        vector_hits = [h for h in vector_hits if self.store.document(h['document_id'])]
         lexical_hits = diverse_lexical_hits(
             self.store.search_chunks_exact(eligible, lexical_terms(question), limit=100),
             candidate_limit,
         )
-        candidate_ids = {hit['chunk_id'] for hit in candidates}
-        for hit in lexical_hits:
-            hit['lexical_match'] = True
-            if hit['chunk_id'] not in candidate_ids:
-                hit['vector_rank'] = 0
-                candidates.append(hit)
-                candidate_ids.add(hit['chunk_id'])
-            else:
-                next(item for item in candidates if item['chunk_id'] == hit['chunk_id'])['lexical_match'] = True
+        candidates = fuse_candidates(vector_hits, lexical_hits)
         ranked = self.reranker.rank(question, candidates, config)
         items = ranked.items
         for index, hit in enumerate(items, 1):
-            hit['rerank_rank'] = index
+            if not ranked.fallback and ranked.provider != 'rrf':
+                hit['rerank_rank'] = index
             hit['selected'] = False
         selected = list(items[:evidence_limit])
-        selected_ids = {item['chunk_id'] for item in selected}
-        ranked_by_id = {item['chunk_id']: item for item in items}
-        for vector_item in candidates[:min(2, evidence_limit)]:
-            if vector_item['chunk_id'] not in selected_ids and selected:
-                selected.pop()
-                selected.append(ranked_by_id.get(vector_item['chunk_id'], vector_item))
-                selected_ids.add(vector_item['chunk_id'])
-        for lexical_item in (item for item in items if item.get('lexical_match')):
-            if lexical_item['chunk_id'] in selected_ids or not selected:
-                continue
-            replacement = next((item for item in reversed(selected) if not item.get('lexical_match')), None)
-            if replacement is None:
-                break
-            selected.remove(replacement)
-            selected.append(lexical_item)
-            selected_ids = {item['chunk_id'] for item in selected}
-        selected.sort(key=lambda item: item.get('vector_rank', 0))
         for item in selected:
             item['selected'] = True
-        diagnostics = {'candidate_count': len(candidates), 'lexical_candidate_count': len(lexical_hits), 'items': items, 'provider': ranked.provider, 'device': ranked.device, 'fallback': ranked.fallback, 'error': ranked.error}
+        diagnostics = {
+            'candidate_count': len(candidates),
+            'vector_candidate_count': len(vector_hits),
+            'lexical_candidate_count': len(lexical_hits),
+            'vector_items': vector_hits,
+            'lexical_items': lexical_hits,
+            'rrf_k': RRF_K,
+            'items': items,
+            'provider': ranked.provider,
+            'device': ranked.device,
+            'fallback': ranked.fallback,
+            'error': ranked.error,
+        }
         return RetrievalResult(selected, diagnostics)
 
     async def answer(self, question, kb_id, document_ids, conversation_id):

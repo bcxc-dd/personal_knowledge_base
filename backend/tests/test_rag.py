@@ -60,7 +60,7 @@ def test_scope_and_model_change_never_leak_old_vectors(tmp_path):
     assert engine.retrieve('缓存多久', kb['id'], []) == []
 
 
-def test_rerank_preserves_vector_top_evidence(tmp_path):
+def test_rerank_selects_its_highest_scored_fused_evidence(tmp_path):
     engine = make_engine(tmp_path)
     doc, _ = engine.upload('paper.txt', '算法思想 创新点 实验结果'.encode(), 'default')
     from app.models import fingerprint
@@ -75,8 +75,7 @@ def test_rerank_preserves_vector_top_evidence(tmp_path):
     engine.vectors.search = lambda *args, **kwargs: candidates
     engine.reranker.rank = lambda question, items, config: type('R', (), {'items': list(reversed(items)), 'provider': 'test', 'device': 'cpu', 'fallback': False, 'error': None})()
     result = engine.retrieve('算法思想和创新点', 'default', [])
-    assert 'top' in {item['chunk_id'] for item in result}
-    assert len(result) == 2
+    assert [item['chunk_id'] for item in result] == ['low', 'middle']
 
 
 def test_disabled_rerank_uses_final_evidence_limit_directly(tmp_path):
@@ -95,7 +94,8 @@ def test_disabled_rerank_uses_final_evidence_limit_directly(tmp_path):
     result = engine.retrieve('算法思想', 'default', [])
     assert seen['limit'] == 2
     assert len(result) == 2
-    assert result.diagnostics['provider'] == 'vector'
+    assert result.diagnostics['provider'] == 'rrf'
+    assert result.diagnostics['rrf_k'] == 60
 
 
 def test_exact_acronym_match_is_included_when_vector_results_miss_it(tmp_path):
@@ -152,13 +152,38 @@ def test_retrieval_preserves_two_lexical_evidence_items(tmp_path):
         {'chunk_id': 'vector-c', 'document_id': doc['id'], 'text': 'unrelated c', 'distance': 0.03, 'name': 'infra.txt', 'location': '第 4 页'},
     ]
     engine.store.search_chunks_exact = lambda *args, **kwargs: [
-        {'chunk_id': 'definition', 'document_id': doc['id'], 'text': 'AI Infra 是基础设施', 'name': 'infra.txt', 'location': '第 11 页'},
-        {'chunk_id': 'overview', 'document_id': doc['id'], 'text': 'AI Infra 包含六层', 'name': 'infra.txt', 'location': '第 13 页'},
+        {'chunk_id': 'definition', 'document_id': doc['id'], 'text': 'AI Infra 是基础设施', 'name': 'infra.txt', 'location': '第 11 页', 'lexical_score': 2},
+        {'chunk_id': 'overview', 'document_id': doc['id'], 'text': 'AI Infra 包含六层', 'name': 'infra.txt', 'location': '第 13 页', 'lexical_score': 1},
     ]
 
     result = engine.retrieve('什么是 AI Infra？', 'default', [])
 
     assert {'definition', 'overview'} <= {item['chunk_id'] for item in result}
+
+
+def test_retrieve_fuses_routes_without_fabricating_vector_metadata(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('infra.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 3})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': 'both', 'document_id': doc['id'], 'text': 'vector', 'distance': 0.1, 'name': 'infra.txt', 'location': '第 16 页'},
+    ]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: [
+        {'chunk_id': 'both', 'document_id': doc['id'], 'text': 'both', 'name': 'infra.txt', 'location': '第 16 页', 'lexical_score': 2},
+        {'chunk_id': 'page-14', 'document_id': doc['id'], 'text': '预填充和解码', 'name': 'infra.txt', 'location': '第 14 页', 'lexical_score': 1},
+    ]
+
+    result = engine.retrieve('预填充和解码分别做什么？', 'default', [])
+
+    page_14 = next(item for item in result.diagnostics['items'] if item['chunk_id'] == 'page-14')
+    assert result[0]['chunk_id'] == 'both'
+    assert page_14['vector_similarity'] is None
+    assert page_14['retrieval_sources'] == ['lexical']
+    assert result.diagnostics['vector_candidate_count'] == 1
+    assert result.diagnostics['lexical_candidate_count'] == 2
 
 
 def test_diverse_lexical_hits_keep_first_hit_per_page():
