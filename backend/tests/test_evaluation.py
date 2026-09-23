@@ -118,6 +118,17 @@ def test_summary_groups_pass_rate_by_category():
     assert summary['by_category']['definition'] == {'total': 2, 'passed': 1}
 
 
+def test_evidence_export_keeps_route_and_rrf_provenance():
+    case = mha_case()
+    item = {'chunk_id': 'mha', 'location': '第 44 页', 'text': 'MHA 定义', 'retrieval_sources': ['lexical'],
+            'lexical_rank': 1, 'lexical_score': 2, 'fused_rank': 1, 'fused_score': 1 / 61}
+
+    result = evaluate_case(case, [item], [item], [item])
+
+    assert result['selected_evidence'][0]['retrieval_sources'] == ['lexical']
+    assert result['selected_evidence'][0]['fused_rank'] == 1
+
+
 def test_location_anchored_case_does_not_treat_cover_title_as_a_match():
     case = EvaluationCase('q01', '什么是 AI Infra？', 'definition', ('第 11 页',), ('AI Infra',), ('定义',), False)
     cover = {'chunk_id': 'cover', 'location': '第 1 页', 'text': '深入理解 AI Infra'}

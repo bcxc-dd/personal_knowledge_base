@@ -31,7 +31,7 @@ class Reranker:
     def rank(self, question, candidates, config):
         original = [dict(item) for item in candidates]
         if not config.get('reranker_enabled', True) or len(original) < 2:
-            return RerankResult(original, 'vector', 'none')
+            return RerankResult(original, 'rrf', 'none')
         try:
             with self._lock:
                 model, device = self._load(config)
@@ -42,4 +42,4 @@ class Reranker:
             ranked.sort(key=lambda item: item['rerank_score'], reverse=True)
             return RerankResult(ranked, 'local-reranker', device)
         except Exception as exc:
-            return RerankResult(original, 'vector', 'none', True, str(exc)[:240])
+            return RerankResult(original, 'rrf', 'none', True, str(exc)[:240])

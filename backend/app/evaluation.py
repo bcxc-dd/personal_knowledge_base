@@ -107,7 +107,8 @@ def _matches(case, items):
 
 def _evidence(item):
     keys = ('chunk_id', 'document_id', 'name', 'location', 'text', 'vector_rank', 'vector_similarity',
-            'lexical_match', 'rerank_rank', 'rerank_score', 'selected')
+            'lexical_rank', 'lexical_score', 'retrieval_sources', 'fused_rank', 'fused_score',
+            'rerank_rank', 'rerank_score', 'selected')
     return {key: item[key] for key in keys if key in item}
 
 
