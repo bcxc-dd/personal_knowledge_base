@@ -1,3 +1,4 @@
+param([switch]$Cuda)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $projectRoot
@@ -16,5 +17,9 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
     npm.cmd run build
     if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' }
+    if ($Cuda) {
+        & (Join-Path $PSScriptRoot 'enable-cuda.ps1')
+        if ($LASTEXITCODE -ne 0) { throw 'CUDA setup failed.' }
+    }
     Write-Host 'Setup complete. Run .\scripts\start.ps1'
 } finally { Pop-Location }

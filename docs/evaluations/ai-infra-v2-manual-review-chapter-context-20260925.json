@@ -1,0 +1,40 @@
+{
+  "schema": "ai-infra-human-review-v2",
+  "reviewed_on": "2026-09-25",
+  "runtime_report": "test-results/ai-infra-v2-chapter-context-answer-final-20260925.json",
+  "gold_suite": "docs/evaluations/ai-infra-answerability-v2.json",
+  "method": "逐题比对金标准每个独立核心子问题的全部必要事实、四层实际片段及本轮生成答案。单核心问题缺少任一必要事实记 none，而非 partial；partial 仅表示至少一个完整核心子问题得到支持。",
+  "labels": {
+    "full": "全部独立核心子问题的必要事实齐全",
+    "partial": "至少一个独立核心子问题充分支持，其他核心子问题缺证据",
+    "none": "没有任何独立核心子问题充分支持",
+    "not_applicable": "需澄清或未检出定义，不纳入 22 道可回答题分母"
+  },
+  "cases": [
+    {"id":"q01","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"定义、资源组成及章节组织齐；末尾仅限制精确边界定义，未发现核心误导。"},
+    {"id":"q02","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":true,"note":"上下文定义及任务/执行影响齐；对压缩机制的资料范围作未核实断言。"},
+    {"id":"q03","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":true,"note":"第14页支持实例定义及一或多加速器；末尾断言整份资料没有具体部署形态的进一步定义，未核对全书。"},
+    {"id":"q04","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":true,"note":"两个阶段答对；末尾误称资料没有性能差异细节，第84页实际有。"},
+    {"id":"q05","candidate":"full","ranked_selected":"partial","contextual_selected":"partial","input":"partial","answer_core_complete":false,"scope_issue":true,"note":"定义完整；第40页重算条件和当前注意力在候选却未入前六，答案把避免旧位置重算作为第14页引用的事实。"},
+    {"id":"q06","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":false,"scope_issue":true,"note":"第14页完整链路已送答；答案漏入口检查、token化、排队、状态空间分配，仍称资料未给更细步骤。"},
+    {"id":"q07","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":false,"scope_issue":true,"note":"加载和逐层读取说明充分，但答案未限定书中常驻路径，容易泛化为所有部署都须完整驻留显存。"},
+    {"id":"q08","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"六层名称和职责均由第13页支持并在答案列齐。"},
+    {"id":"q09","candidate":"none","ranked_selected":"none","contextual_selected":"none","input":"none","answer_core_complete":false,"scope_issue":false,"note":"有估算动机和资源约束，但缺第3页的假设/遗漏与测量校正；答案也未说明校正。"},
+    {"id":"q10","candidate":"none","ranked_selected":"none","contextual_selected":"none","input":"none","answer_core_complete":false,"scope_issue":true,"note":"候选与答案偏概念概述，缺逐token KV 增长/旧KV读取及固定状态模型例外。"},
+    {"id":"q11","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":true,"note":"训练调整参数、推理使用参数答对；其他细节不足的全文范围断言未核实。"},
+    {"id":"q12","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"partial","answer_core_complete":false,"scope_issue":true,"note":"第84页完整解释权重复用和通常的算力/带宽差异；送答仅此片段，缺旧KV读取和 batch/上下文/模型/硬件条件的充分展开，decode 核心未齐。"},
+    {"id":"q13","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"三类存储职责答对；补充内容虽偏长，未见明显超出本题的错误资料范围断言。"},
+    {"id":"q14","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"传统代码与模型/上下文/工具入口、宿主执行职责均覆盖。"},
+    {"id":"q15","candidate":"full","ranked_selected":"none","contextual_selected":"none","input":"none","answer_core_complete":false,"scope_issue":true,"note":"第13页六层在候选未入选；虽有定义和估算，单一章总结核心缺六层事实，不能计 full 或 partial；答案误称仅有章开头。"},
+    {"id":"q16","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"none","answer_core_complete":false,"scope_issue":true,"note":"第32页计算图与第82页 batch/长度/专家在选中层可拼全；判定后只送第32页部分及泛片段，缺暂存用途和资源项变化。答案还误称资料未提供本章后续结论。"},
+    {"id":"q17","candidate":"none","ranked_selected":"none","contextual_selected":"none","input":"none","answer_core_complete":false,"scope_issue":true,"note":"第318页章导言有优化范围，缺第354页章末的内存→时限→合格结果 GPU 时间判据；单核心未齐。"},
+    {"id":"q18","candidate":"none","ranked_selected":"none","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":true,"note":"原两路仅有第401页首片；同页续段与第446页章末三段扩展后全部三组事实入答。答案正确列出32/48卡完成时间与期限结论；末尾仍把本次送答片段局限说成现有资料局限。"},
+    {"id":"q19","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":true,"note":"MHA 全称及每Q头独有KV得到支持；末尾断言整份资料缺投影/拼接细节，未核对全书。"},
+    {"id":"q20","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"GQA 组内共享、KV组数减少而Q头交互仍分别计算；四头示例明确为例。"},
+    {"id":"q21","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"所有Q头共用一组KV，同时仍按Q头分别交互。"},
+    {"id":"q22","candidate":"partial","ranked_selected":"partial","contextual_selected":"partial","input":"partial","answer_core_complete":false,"scope_issue":true,"note":"K/V含义及复用已说明，但候选/答案未明确旧token表示避免大量重算；本次未再混淆 MLA/FlashMLA。末尾仍以本次片段不足推断整份资料不含具体计算。"},
+    {"id":"q23","candidate":"not_applicable","ranked_selected":"not_applicable","contextual_selected":"not_applicable","input":"not_applicable","answer_core_complete":null,"scope_issue":false,"behavior_correct":true,"note":"明确追问公司、集群范围与时间，不引用邻近GPU数字。"},
+    {"id":"q24","candidate":"not_applicable","ranked_selected":"not_applicable","contextual_selected":"not_applicable","input":"not_applicable","answer_core_complete":null,"scope_issue":false,"behavior_correct":true,"note":"明确追问产品、规格、计价单位与时间。"},
+    {"id":"q25","candidate":"not_applicable","ranked_selected":"not_applicable","contextual_selected":"not_applicable","input":"not_applicable","answer_core_complete":null,"scope_issue":false,"behavior_correct":true,"note":"没有编造 ZZQ 定义；可进一步表述为当前提取文本未找到。"}
+  ]
+}

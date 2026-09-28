@@ -1,0 +1,908 @@
+{
+  "schema": "ai-infra-gold-rubric",
+  "version": 2,
+  "status": "calibrated_and_runtime_evaluated",
+  "calibrated_on": "2026-09-24",
+  "document_name": "AI-Infra-Book.pdf",
+  "document_sha256": "cdbb925efe420ab0c65a245068770e443b4f52995e902c56669324329725e217",
+  "pdf_page_count": 519,
+  "page_basis": "1-based physical PDF page; 第 N 页 in parser, not printed body page",
+  "rubric": "2026-09-24-ai-infra-calibration.md",
+  "evidence_policy": "Evidence references are verified starting points, not mandatory page-hit sets. Assess semantic coverage of every required fact; accept equivalent source evidence after review. Anchors locate passages and are not keyword scoring rules.",
+  "sources": {
+    "s01": {
+      "page": 11,
+      "anchors": [
+        "AI Infra 是支撑 AI 训练和推理的基础设施",
+        "包括计算设备、存储与互联，以及组织这些资源的软件"
+      ]
+    },
+    "s02": {
+      "page": 11,
+      "anchors": [
+        "上下文（context）是本次模型调用可以使用的输入内容",
+        "保持模型参数不变，改变指令、示例或参考材料"
+      ]
+    },
+    "s03": {
+      "page": 14,
+      "anchors": [
+        "推理实例是能够独立完成模型请求的一组执行资源",
+        "可以由一个或多个加速器组成"
+      ]
+    },
+    "s04": {
+      "page": 14,
+      "anchors": [
+        "模型先处理输入，这一阶段称为预填充",
+        "随后逐步生成新token，这一阶段称为解码"
+      ]
+    },
+    "s05": {
+      "page": 14,
+      "anchors": [
+        "保存上下文 token 产生的键和值两类向量",
+        "供后续位置的注意力计算使用"
+      ]
+    },
+    "s06": {
+      "page": 14,
+      "anchors": [
+        "入口核验访问权限、检查配额和请求内容后",
+        "实例调度器将请求放入队列",
+        "CPU 上的运行时随后向 GPU 提交计算任务"
+      ]
+    },
+    "s07": {
+      "page": 14,
+      "anchors": [
+        "权重在实例启动或模型切换时从存储加载",
+        "供多次请求使用"
+      ]
+    },
+    "s08": {
+      "page": 15,
+      "anchors": [
+        "加载把模型送到加速器",
+        "每步从显存读取所需权重"
+      ]
+    },
+    "s09": {
+      "page": 13,
+      "anchors": [
+        "从应用到硬件的六层分工",
+        "主存存放 CPU 使用的数据",
+        "片上存储则位于处理器芯片内部"
+      ]
+    },
+    "s10": {
+      "page": 2,
+      "anchors": [
+        "从数量级估算到系统设计",
+        "需要驻留的数据，显存装得下吗",
+        "耗时下界"
+      ]
+    },
+    "s11": {
+      "page": 3,
+      "anchors": [
+        "从约束推导设计",
+        "实际系统中的开销和变化，则要继续用测量来校正"
+      ]
+    },
+    "s12": {
+      "page": 40,
+      "anchors": [
+        "旧 token 的投影与 FFN 会重复执行",
+        "就避免了旧 token 的大量重算",
+        "当前查询与上下文的注意力计算仍要执行"
+      ]
+    },
+    "s13": {
+      "page": 41,
+      "anchors": [
+        "保存已经算出的结果",
+        "每条独立请求各增加一份上下文"
+      ]
+    },
+    "s14": {
+      "page": 43,
+      "anchors": [
+        "输入越长，第一次 decode 要访问的上下文就越多",
+        "上下文交互则随"
+      ]
+    },
+    "s15": {
+      "page": 11,
+      "anchors": [
+        "训练通过样本调整模型参数",
+        "推理使用训练得到的参数处理输入、产生输出"
+      ]
+    },
+    "s16": {
+      "page": 83,
+      "anchors": [
+        "首输出来自 prefill",
+        "后续 3 次 decode 各追加一个 token"
+      ]
+    },
+    "s17": {
+      "page": 84,
+      "anchors": [
+        "低并发 decode 则可能只为少数几个 token 读取整组权重",
+        "prefill 通常受算力限制、decode 通常受内存带宽限制"
+      ]
+    },
+    "s18": {
+      "page": 11,
+      "anchors": [
+        "传统应用主要用程序代码表达行为",
+        "通过选择模型、组织上下文和提供工具来表达任务"
+      ]
+    },
+    "s19": {
+      "page": 11,
+      "anchors": [
+        "用容量、算力和带宽回答具体的设计问题",
+        "说明需求如何推动系统设计"
+      ]
+    },
+    "s20": {
+      "page": 32,
+      "anchors": [
+        "存储容量",
+        "运算量",
+        "读写量",
+        "哪些数据可以共享",
+        "哪些只需暂存"
+      ]
+    },
+    "s21": {
+      "page": 82,
+      "anchors": [
+        "本章小结",
+        "矩阵尺寸决定权重容量与线性运算量",
+        "专家分派决定每批使用多少份权重"
+      ]
+    },
+    "s22": {
+      "page": 318,
+      "anchors": [
+        "研究批处理、请求调度、内存管理、压缩、卸载和推测解码",
+        "在给定时间内返回更多正确答案"
+      ]
+    },
+    "s23": {
+      "page": 354,
+      "anchors": [
+        "本章小结",
+        "先检查内存是否足够",
+        "最后比较每个合格结果占用的GPU 时间"
+      ]
+    },
+    "s24": {
+      "page": 401,
+      "anchors": [
+        "哪些张量和缓冲区需要同时占用显存",
+        "故障后能够恢复到哪一步"
+      ]
+    },
+    "s25": {
+      "page": 446,
+      "anchors": [
+        "ZeRO 减少状态复制",
+        "checkpoint 保存与故障重做时间",
+        "跨引擎执行还需要保证训推一致性"
+      ]
+    },
+    "s26": {
+      "page": 44,
+      "anchors": [
+        "Multi-Head Attention",
+        "MHA：每个查询各有一组 KV",
+        "GQA：每两个查询共用一组 KV",
+        "MQA：四个查询共用一组 KV"
+      ]
+    },
+    "s27": {
+      "page": 16,
+      "anchors": [
+        "72",
+        "GPU"
+      ]
+    },
+    "s28": {
+      "page": 397,
+      "anchors": [
+        "8",
+        "元"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "q01",
+      "question": "什么是 AI Infra？它包含哪些主要部分？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "definition",
+          "question": "AI Infra 是什么？",
+          "required_facts": [
+            "支撑 AI 训练和推理的基础设施。"
+          ],
+          "evidence_refs": [
+            "s01"
+          ]
+        },
+        {
+          "id": "components",
+          "question": "主要组成部分是什么？",
+          "required_facts": [
+            "计算设备、存储、互联，以及组织这些资源的软件。"
+          ],
+          "evidence_refs": [
+            "s01"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q02",
+      "question": "在模型调用中，上下文指什么？为什么它会影响执行？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "definition",
+          "question": "上下文是什么？",
+          "required_facts": [
+            "本次调用可使用的输入，包括任务指令、参考材料、此前交互结果。"
+          ],
+          "evidence_refs": [
+            "s02"
+          ]
+        },
+        {
+          "id": "effect",
+          "question": "为什么影响执行？",
+          "required_facts": [
+            "参数不变时，改变指令、示例或参考材料也会改变任务和回答方式。"
+          ],
+          "evidence_refs": [
+            "s02"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q03",
+      "question": "什么是推理实例？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "definition",
+          "question": "什么是推理实例？",
+          "required_facts": [
+            "可独立完成模型请求的一组执行资源，由一个或多个加速器组成。"
+          ],
+          "evidence_refs": [
+            "s03"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q04",
+      "question": "预填充和解码分别做什么？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "prefill",
+          "question": "预填充做什么？",
+          "required_facts": [
+            "处理已知输入 token。"
+          ],
+          "evidence_refs": [
+            "s04",
+            "s16"
+          ]
+        },
+        {
+          "id": "decode",
+          "question": "解码做什么？",
+          "required_facts": [
+            "依据已有状态逐步生成后续 token，前一步输出成为后一步输入。"
+          ],
+          "evidence_refs": [
+            "s04",
+            "s16"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q05",
+      "question": "KV 缓存是什么，为什么生成时要复用它？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "definition",
+          "question": "KV 缓存是什么？",
+          "required_facts": [
+            "保存上下文 token 的键和值，供后续注意力使用。"
+          ],
+          "evidence_refs": [
+            "s05"
+          ]
+        },
+        {
+          "id": "benefit",
+          "question": "为什么复用？",
+          "required_facts": [
+            "在权重、位置和相关条件不变时复用旧 K、V，避免旧 token 的大量重算；当前查询的注意力仍需计算。"
+          ],
+          "evidence_refs": [
+            "s12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q06",
+      "question": "一次生成请求从应用到 GPU 大致经历哪些步骤？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "pipeline",
+          "question": "请求怎样到达 GPU 执行？",
+          "required_facts": [
+            "应用组织输入，入口检查，路由器选择实例。",
+            "文本转换为 token，调度器排队、组成 batch 并分配状态空间。",
+            "CPU 运行时提交任务，GPU 执行算子；tokenizer 可在实例或共享前端。"
+          ],
+          "evidence_refs": [
+            "s06"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q07",
+      "question": "为什么模型权重需要驻留在显存中？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "residency",
+          "question": "驻留解决什么问题？",
+          "required_facts": [
+            "书中常驻路径在启动或模型切换时加载，供多次请求反复使用。",
+            "驻留不等于无需读取：执行时仍逐层从显存读取权重；不能推断所有部署都必须将全部权重常驻单卡。"
+          ],
+          "evidence_refs": [
+            "s07",
+            "s08"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q08",
+      "question": "从应用到硬件的六层分工分别是什么？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "layers",
+          "question": "六层各是什么及其分工？",
+          "required_facts": [
+            "应用与任务：任务和时限。",
+            "模型与负载：计算和数据需求。",
+            "训练与推理系统：请求、batch、加速器安排。",
+            "算子与编译运行时：把运算转成可执行程序。",
+            "处理器与存储：计算与数据保存。",
+            "互联与数据中心：设备连接、电力与散热。"
+          ],
+          "evidence_refs": [
+            "s09"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q09",
+      "question": "书中为什么强调先做数量级估算？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "rationale",
+          "question": "为什么先估算？",
+          "required_facts": [
+            "先检查容量、算力、带宽和串行依赖等约束，判断方案可行性、耗时下界和优先瓶颈。",
+            "估算不等于实测，明确假设和遗漏后继续用测量校正。"
+          ],
+          "evidence_refs": [
+            "s10",
+            "s11"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q10",
+      "question": "长上下文为什么会改变系统的计算和存储需求？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "compute",
+          "question": "计算需求如何改变？",
+          "required_facts": [
+            "在书中的逐 token KV 注意力场景，更长输入需处理更多 token，后续查询与更多上下文交互。"
+          ],
+          "evidence_refs": [
+            "s12",
+            "s14"
+          ]
+        },
+        {
+          "id": "storage",
+          "question": "存储需求如何改变？",
+          "required_facts": [
+            "逐 token KV 状态随上下文增加，decode 需读取更多旧 KV；容量与累计读写量不同。",
+            "不能将这种线性增长无条件推广到固定状态递推模型。"
+          ],
+          "evidence_refs": [
+            "s13",
+            "s14",
+            "s26"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q11",
+      "question": "训练和推理在模型参数的作用上有什么区别？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "training",
+          "question": "训练如何使用参数？",
+          "required_facts": [
+            "通过样本调整模型参数。"
+          ],
+          "evidence_refs": [
+            "s15"
+          ]
+        },
+        {
+          "id": "inference",
+          "question": "推理如何使用参数？",
+          "required_facts": [
+            "使用训练得到的参数处理输入、产生输出。"
+          ],
+          "evidence_refs": [
+            "s15"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q12",
+      "question": "prefill 和 decode 的负载特点有什么差异？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "prefill",
+          "question": "prefill 的负载特点？",
+          "required_facts": [
+            "多个已知输入 token 可同时处理，同次权重读取参与更多乘加，输入较多时通常偏算力受限。"
+          ],
+          "evidence_refs": [
+            "s12",
+            "s17"
+          ]
+        },
+        {
+          "id": "decode",
+          "question": "decode 的负载特点？",
+          "required_facts": [
+            "同一请求逐步生成，低并发时少量 token 仍需读取整组权重并访问旧 KV，通常偏内存带宽受限。",
+            "这是有条件的趋势，会受 batch、上下文、模型和硬件影响，不是永远成立的二分。"
+          ],
+          "evidence_refs": [
+            "s14",
+            "s16",
+            "s17"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q13",
+      "question": "CPU 主存、GPU 显存和片上存储各自承担什么职责？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "main",
+          "question": "CPU 主存职责？",
+          "required_facts": [
+            "存放 CPU 使用的数据。"
+          ],
+          "evidence_refs": [
+            "s09"
+          ]
+        },
+        {
+          "id": "vram",
+          "question": "GPU 显存职责？",
+          "required_facts": [
+            "存放 GPU 使用的数据，例如权重、状态。"
+          ],
+          "evidence_refs": [
+            "s09",
+            "s07"
+          ]
+        },
+        {
+          "id": "onchip",
+          "question": "片上存储职责？",
+          "required_facts": [
+            "位于处理器芯片内部，供计算单元就近读取。"
+          ],
+          "evidence_refs": [
+            "s09"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q14",
+      "question": "模型驱动应用和传统应用的可编程性有什么不同？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "traditional",
+          "question": "传统应用如何表达行为？",
+          "required_facts": [
+            "主要由代码表达行为，经编译和操作系统执行与资源管理。"
+          ],
+          "evidence_refs": [
+            "s18"
+          ]
+        },
+        {
+          "id": "model",
+          "question": "模型驱动应用有什么变化？",
+          "required_facts": [
+            "增加选择模型、组织上下文、提供工具的入口；代码仍组织流程，宿主执行工具，并非模型取代全部程序。"
+          ],
+          "evidence_refs": [
+            "s18"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q15",
+      "question": "请总结第 1 章对 AI Infra 的核心认识。",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "summary",
+          "question": "第 1 章的核心认识是什么？",
+          "required_facts": [
+            "AI Infra 支撑训练推理，由硬件资源和组织资源的软件构成。",
+            "应用通过代码、模型和上下文表达任务，六层系统协作完成请求。",
+            "按容量、算力、带宽估算可行性和时间，再依据需求进行软硬件协同设计。"
+          ],
+          "evidence_refs": [
+            "s01",
+            "s09",
+            "s19"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q16",
+      "question": "第 2 章模型架构主要要解决什么资源问题？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "summary",
+          "question": "模型架构如何决定资源需求？",
+          "required_facts": [
+            "从计算图和具体配置推导存储容量 M、运算量 F、读写量 R，而非只看参数总量。",
+            "区分共享权重、长期上下文状态和临时数据；分析 batch、长度、KV 组织及专家激活改变哪些资源项。"
+          ],
+          "evidence_refs": [
+            "s20",
+            "s21"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q17",
+      "question": "第 8 章推理优化的主线是什么？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "summary",
+          "question": "第 8 章推理优化主线？",
+          "required_facts": [
+            "在给定加速器和质量/时限条件下，组织请求，增加按期返回的正确结果。",
+            "分析批处理与调度、KV 分页和前缀共享、压缩、卸载、推测解码的收益与额外开销。",
+            "先看内存能否容纳，再看能否按期完成，最后比较每个合格结果的 GPU 时间。"
+          ],
+          "evidence_refs": [
+            "s22",
+            "s23"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q18",
+      "question": "第 10 章训练系统重点讨论哪些系统问题？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "summary",
+          "question": "第 10 章训练系统重点？",
+          "required_facts": [
+            "训练权重、梯度、优化器状态、激活和缓冲区的容量、放置与生命周期。",
+            "并行和通信、ZeRO、重计算、卸载及计算通信重叠如何影响每步关键路径。",
+            "数据准备、checkpoint、故障恢复如何影响长期训练期限与成本；RL 还涉及采样/策略版本与训推一致性。"
+          ],
+          "evidence_refs": [
+            "s24",
+            "s25"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q19",
+      "question": "MHA 是什么？它的 K、V 是如何组织的？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "definition",
+          "question": "MHA 是什么？",
+          "required_facts": [
+            "Multi-Head Attention，多头注意力。"
+          ],
+          "evidence_refs": [
+            "s26"
+          ]
+        },
+        {
+          "id": "organization",
+          "question": "K、V 如何组织？",
+          "required_facts": [
+            "每个查询 Q 头有自己的 K、V 头，不是所有查询头共享一组。"
+          ],
+          "evidence_refs": [
+            "s26"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q20",
+      "question": "GQA 相比 MHA 如何共享 KV？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "sharing",
+          "question": "GQA 与 MHA 的 KV 组织有什么区别？",
+          "required_facts": [
+            "MHA 每个 Q 头各有 K、V；GQA 将 Q 头分组，组内共享 K、V。",
+            "减少每 token 的 KV 组数，不减少上下文 token 数，也不合并各查询输出；四头两组只是示例。"
+          ],
+          "evidence_refs": [
+            "s26"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q21",
+      "question": "MQA 的 KV 共享方式是什么？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "sharing",
+          "question": "MQA 如何共享 KV？",
+          "required_facts": [
+            "所有 Q 头共享一组 K、V，但查询仍分别评分与输出。"
+          ],
+          "evidence_refs": [
+            "s26"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q22",
+      "question": "KV cache 这个缩写代表什么，它和生成有什么关系？",
+      "corpus_answerability": "supported",
+      "required_behavior": "按实际候选证据逐核心子问题判定，不能直接沿用语料级 supported 标签。",
+      "core_subquestions": [
+        {
+          "id": "definition",
+          "question": "KV cache 是什么？",
+          "required_facts": [
+            "键和值的缓存，K 对应键、V 对应值。"
+          ],
+          "evidence_refs": [
+            "s05"
+          ]
+        },
+        {
+          "id": "generation",
+          "question": "与生成的关系？",
+          "required_facts": [
+            "保存上下文状态供后续注意力复用，避免旧 token 表示的大量重算。"
+          ],
+          "evidence_refs": [
+            "s05",
+            "s12"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q23",
+      "question": "书中给出了某特定公司内部 GPU 集群的精确数量吗？",
+      "corpus_answerability": "underspecified",
+      "required_behavior": "clarify",
+      "core_subquestions": [],
+      "notes": "未给出公司、集群范围或时间。要求补充目标；不可拿书中硬件产品配置或训练算例替代，也不可宣称书中没有任何 GPU 数量。"
+    },
+    {
+      "id": "q24",
+      "question": "书中给出了某个未指名产品的精确单价吗？",
+      "corpus_answerability": "underspecified",
+      "required_behavior": "clarify",
+      "core_subquestions": [],
+      "notes": "未给出产品、规格、计价单位或时期。要求补充目标；不可把算例假设价格当成产品真实售价。"
+    },
+    {
+      "id": "q25",
+      "question": "书中定义了虚构缩写 ZZQ 吗？",
+      "corpus_answerability": "not_found_in_extracted_text",
+      "required_behavior": "abstain",
+      "core_subquestions": [],
+      "notes": "对绑定哈希 PDF 全部 519 页提取文本做大小写不敏感 ZZQ 搜索，零匹配；这是提取文本范围内的未发现，不是图像/OCR 或语义别名的穷尽证明。不编造展开。"
+    }
+  ],
+  "assessment_fixtures": [
+    {
+      "id": "f01",
+      "case_id": "q04",
+      "excerpts": [
+        {
+          "page": 14,
+          "text": "模型先处理输入，这一阶段称为预填充"
+        },
+        {
+          "page": 14,
+          "text": "随后逐步生成新token，这一阶段称为解码"
+        },
+        {
+          "page": 14,
+          "text": "前一步输出成为下一步输入"
+        },
+        {
+          "page": 14,
+          "text": "后续步骤会复用此前保存的状态"
+        }
+      ],
+      "expected_status": "supported",
+      "supported_core_ids": [
+        "prefill",
+        "decode"
+      ],
+      "unsupported_core_ids": []
+    },
+    {
+      "id": "f02",
+      "case_id": "q04",
+      "excerpts": [
+        {
+          "page": 14,
+          "text": "模型先处理输入，这一阶段称为预填充"
+        }
+      ],
+      "expected_status": "partial",
+      "supported_core_ids": [
+        "prefill"
+      ],
+      "unsupported_core_ids": [
+        "decode"
+      ]
+    },
+    {
+      "id": "f03",
+      "case_id": "q04",
+      "excerpts": [
+        {
+          "page": 14,
+          "text": "推理实例是能够独立完成模型请求的一组执行资源"
+        }
+      ],
+      "expected_status": "insufficient",
+      "supported_core_ids": [],
+      "unsupported_core_ids": [
+        "prefill",
+        "decode"
+      ]
+    },
+    {
+      "id": "f04",
+      "case_id": "q11",
+      "excerpts": [
+        {
+          "page": 11,
+          "text": "训练通过样本调整模型参数；推理使用训练得到的参数处理输入、产生输出。"
+        }
+      ],
+      "expected_status": "supported",
+      "supported_core_ids": [
+        "training",
+        "inference"
+      ],
+      "unsupported_core_ids": []
+    },
+    {
+      "id": "f05",
+      "case_id": "q11",
+      "excerpts": [
+        {
+          "page": 11,
+          "text": "训练通过样本调整模型参数"
+        }
+      ],
+      "expected_status": "partial",
+      "supported_core_ids": [
+        "training"
+      ],
+      "unsupported_core_ids": [
+        "inference"
+      ]
+    },
+    {
+      "id": "f06",
+      "case_id": "q11",
+      "excerpts": [],
+      "expected_status": "insufficient",
+      "supported_core_ids": [],
+      "unsupported_core_ids": [
+        "training",
+        "inference"
+      ]
+    }
+  ],
+  "fixture_policy": "Only excerpts are provided to the assessor and generator; no full source page, gold facts, or previous answers. These controlled fixtures are not additional retrieval questions or measured runtime outcomes."
+}

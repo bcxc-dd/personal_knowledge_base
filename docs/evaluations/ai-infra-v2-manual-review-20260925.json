@@ -1,0 +1,214 @@
+{
+  "schema": "ai-infra-human-review-v2",
+  "reviewed_on": "2026-09-25",
+  "runtime_report": "test-results/ai-infra-v2-answer-20260925.json",
+  "scope": "该次运行的候选、选中、送入模型证据及回答；判定依据为已校准的独立核心子问题和原文，不由页码或词命中自动生成。",
+  "labels": {
+    "full": "所有独立核心子问题有充分证据",
+    "partial": "至少一个独立核心子问题充分支持，其他缺证据",
+    "none": "无独立核心子问题被充分支持",
+    "not_applicable": "澄清或未检出定义用例不进入正例证据覆盖分母"
+  },
+  "cases": [
+    {
+      "id": "q01",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "核心定义与组成齐全；末尾对整书实验的否定超出问题和本次证据。"
+    },
+    {
+      "id": "q02",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "核心定义与作用齐全；背景中称模型应用不再通过代码组织程序，与第11页冲突。"
+    },
+    {
+      "id": "q03",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第14页定义及一/多加速器组成得到回答。"
+    },
+    {
+      "id": "q04",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第14页:77 同时支持两个阶段；回答覆盖二者。"
+    },
+    {
+      "id": "q05",
+      "candidate_evidence": "full",
+      "selected_evidence": "partial",
+      "input_evidence": "partial",
+      "answer_core_complete": false,
+      "note": "第40页:185 在候选融合排名12，未入前6；输入仅解释KV保存与复用，缺重算条件和当前注意力；回答误称本次资料没有第2章。"
+    },
+    {
+      "id": "q06",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": false,
+      "note": "第14页:75 有完整链路；回答略去了 token 化、排队与状态空间分配。"
+    },
+    {
+      "id": "q07",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第14—15页区分加载与逐步读取；回答主干正确，‘必须驻留’的适用范围应收窄。"
+    },
+    {
+      "id": "q08",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第13页:71 六层及职责均在输入证据和答案中。"
+    },
+    {
+      "id": "q09",
+      "candidate_evidence": "none",
+      "selected_evidence": "none",
+      "input_evidence": "none",
+      "answer_core_complete": false,
+      "note": "候选主要为第2页动机，缺第3页的测量校正/约束方法；回答称整书未展开具体方法，事实不成立。"
+    },
+    {
+      "id": "q10",
+      "candidate_evidence": "none",
+      "selected_evidence": "none",
+      "input_evidence": "none",
+      "answer_core_complete": false,
+      "note": "未找到第40—43页逐token KV容量和读取机制；输入仅有概括段。回答停在‘追加工’，未完成。"
+    },
+    {
+      "id": "q11",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第11页:62 训练调整/推理使用参数；回答覆盖二者，但额外声称整书无梯度与前向细节不成立。"
+    },
+    {
+      "id": "q12",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "none",
+      "answer_core_complete": false,
+      "note": "第84页:365 向量候选第1、融合第2、选中第2，却被证据判定过滤；回答反称资料未出现 prefill/decode。"
+    },
+    {
+      "id": "q13",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第13页:73 及第15页对三类存储有支持；答案覆盖职责。"
+    },
+    {
+      "id": "q14",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第11页:64 支持传统代码与模型/上下文/工具入口；答案覆盖。"
+    },
+    {
+      "id": "q15",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第11页:62 章导言足以概括核心；答案错误地宣称整份资料只含章开头。"
+    },
+    {
+      "id": "q16",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": false,
+      "note": "第32页:149 有 M/F/R 与权重、长期状态、暂存结果；答案遗漏暂存数据的资源用途。"
+    },
+    {
+      "id": "q17",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第318页:1400 章导言支持主线；答案仍不必要地声称缺少完整主线定论。"
+    },
+    {
+      "id": "q18",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "none",
+      "answer_core_complete": false,
+      "note": "第401页:1774 是向量第1、融合第1、选中第1，证据判定却为 insufficient，故整题拒答。"
+    },
+    {
+      "id": "q19",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第44页:200 支持 MHA 定义与每查询头独有KV。"
+    },
+    {
+      "id": "q20",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第44页:200 支持 GQA 组内共享及 MHA 对比。"
+    },
+    {
+      "id": "q21",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第44页:200 支持 MQA 全部Q头共用一组KV。"
+    },
+    {
+      "id": "q22",
+      "candidate_evidence": "full",
+      "selected_evidence": "full",
+      "input_evidence": "full",
+      "answer_core_complete": true,
+      "note": "第14页:77 支持KV含义与生成复用。"
+    },
+    {
+      "id": "q23",
+      "candidate_evidence": "not_applicable",
+      "selected_evidence": "not_applicable",
+      "input_evidence": "not_applicable",
+      "answer_core_complete": false,
+      "note": "对象缺失，应追问公司、集群和时间；当前把公开硬件数字当作相关证据并断言整书没有某类精确数量。"
+    },
+    {
+      "id": "q24",
+      "candidate_evidence": "not_applicable",
+      "selected_evidence": "not_applicable",
+      "input_evidence": "not_applicable",
+      "answer_core_complete": false,
+      "note": "对象缺失，应追问产品、规格和时间；当前只重复‘资料不足’，未指明要补充什么。"
+    },
+    {
+      "id": "q25",
+      "candidate_evidence": "not_applicable",
+      "selected_evidence": "not_applicable",
+      "input_evidence": "not_applicable",
+      "answer_core_complete": true,
+      "note": "没有编造ZZQ展开，给出资料不足；措辞可更清楚说明未检出定义。"
+    }
+  ]
+}

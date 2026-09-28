@@ -1,5 +1,7 @@
 # 知屿 · 个人知识库 MVP
 
+项目定位、当前阶段与后续优先级以 [项目路线图](docs/project-roadmap.md) 为准；跨会话继续开发时先阅读该文档。下文部分功能和测试说明是早期 MVP 记录，当前验证边界见路线图。
+
 用户上传资料后，系统自动解析、切分并生成向量；提问时从 **Chroma** 检索相关片段，再调用 **DeepSeek** 生成带引用的回答。
 
 ## 已实现
@@ -26,6 +28,17 @@ cd D:\rag
 ```
 
 访问 **http://127.0.0.1:8765**。如果依赖和构建已经存在，只需运行 `start.ps1`。前台运行时按 Ctrl+C 停止；不启动多个服务进程同时访问同一数据目录。
+
+### 可选：启用 NVIDIA CUDA 重排
+
+默认依赖安装 CPU 版 ONNX Runtime，适合没有 NVIDIA 显卡的机器。若设置里选择了 CUDA 重排，须先停止服务，再执行：
+
+```powershell
+.\scripts\enable-cuda.ps1
+.\scripts\start.ps1
+```
+
+新机器也可运行 `.\scripts\setup.ps1 -Cuda`。脚本会将 CPU 版替换为同版本的 GPU 版，安装所需的 CUDA 12 / cuDNN 9 运行库，并用真实重排模型确认 session 包含 `CUDAExecutionProvider`。无需另外安装完整 CUDA Toolkit；需要支持 CUDA 12 的 NVIDIA 驱动。以后若重新运行默认 `setup.ps1`，再运行 `enable-cuda.ps1` 即可。首次安装 GPU 依赖需要下载约 2 GB。兼容性与 DLL 预加载方式见 [ONNX Runtime 官方说明](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html)。
 
 若 PowerShell 当前策略不允许脚本，可直接执行命令，不需要修改系统执行策略：
 
@@ -54,7 +67,7 @@ DeepSeek 当前公开接口和模型名参考：[官方接入说明](https://api
 
 为适应默认本地模型的输入窗口，当前按段落、PDF 页或 DOCX 表格定位，单片段最多约 400 字符，长段落之间保留约 60 字符重叠。这是字符切分，并非模型 token 精确预算。向量检索返回最多 6 个片段，模型接收片段和定位信息，回答中的引用编号校验后保存。
 
-“有引用”不代表回答一定正确；仍需核对原文。验证版尚未加入重排、混合检索与经过评测校准的相似度阈值；资料无答案时依靠明确的依据约束提示模型说明不足，不承诺完全消除幻觉。
+“有引用”不代表回答一定正确；仍需核对原文。当前已接入向量与词法融合、可选重排和初步证据判定，但尚未形成可靠的逐题充分度判断或经过评测校准的相似度阈值，不能承诺完全消除误答与误拒。
 
 ## MVP 边界
 
@@ -80,21 +93,23 @@ DeepSeek 当前公开接口和模型名参考：[官方接入说明](https://api
 
 ### AI-Infra 检索评测
 
-评测集只覆盖本机的 `AI-Infra-Book.pdf`，用于检查学习概念时的证据召回。默认命令只运行本地检索，不会调用回答服务：
+默认使用校准后的 25 题 v2 集，只评测本机同哈希的 `AI-Infra-Book.pdf`。报告按向量候选、词法候选、融合选中、送入回答的证据分层记录；默认只运行本地检索与证据判定，不调用回答服务：
 
 ```powershell
 .venv\Scripts\python.exe scripts\evaluate_retrieval.py
 ```
 
-结果会写入 `test-results/ai-infra-retrieval-*.json`。报告中的 `failure_stage` 区分资料未解析、未召回、候选未进入最终证据，以及资料不足题却返回证据。
+结果写入 `test-results/ai-infra-evaluation-v2-*.json`。报告会列出人工审阅待填项，不能把选中页码或片段术语自动当作答案正确。原 v1 题集和历史结果仍可通过 `--suite docs/evaluations/ai-infra-retrieval-v1.json` 使用旧口径查看。
 
-以下命令会为 25 道题调用当前配置的回答服务，可能产生费用；仅在需要人工填写回答清晰度和引用贴切度时使用：
+以下命令会对 25 道题调用当前配置的回答服务，可能产生费用。运行器使用数据快照，不会把评测问答加入日常会话；原始报告含私有资料片段，保留在 Git 忽略的 `test-results/`：
 
 ```powershell
 .venv\Scripts\python.exe scripts\evaluate_retrieval.py --with-answer
 ```
 
 如果替换了 PDF，评测会因 SHA-256 不一致而停止。应先人工审阅新内容和预期页码，再有意识地更新评测集。
+
+首次 v2 全题结果、逐题问题与下一步见 [评测报告](docs/evaluations/2026-09-25-ai-infra-v2-result.md)。
 
 ```powershell
 .venv\Scripts\python.exe -m pytest -q

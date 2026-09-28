@@ -16,17 +16,26 @@ class Reranker:
     def __init__(self, cache: Path, model=None):
         self.cache = cache
         self._model = model
+        self._device = 'cpu' if model is not None else None
         self._lock = threading.Lock()
 
     def _load(self, config):
         if self._model is not None:
-            return self._model, 'cpu'
+            return self._model, self._device
+        import onnxruntime as ort
         from fastembed.rerank.cross_encoder.onnx_text_cross_encoder import OnnxTextCrossEncoder
         requested = config.get('reranker_device', 'auto')
         use_cuda = requested in {'auto', 'cuda'}
+        if use_cuda and 'CUDAExecutionProvider' in ort.get_available_providers():
+            ort.preload_dlls(directory='')
         model_name = config.get('reranker_model') or RERANKER_MODEL
-        self._model = OnnxTextCrossEncoder(model_name, cache_dir=str(self.cache), cuda=use_cuda, threads=2)
-        return self._model, 'cuda' if use_cuda else 'cpu'
+        model = OnnxTextCrossEncoder(model_name, cache_dir=str(self.cache), cuda=use_cuda, threads=2)
+        active_providers = model.model.get_providers()
+        if use_cuda and 'CUDAExecutionProvider' not in active_providers:
+            raise RuntimeError(f'CUDAExecutionProvider 未加载，实际提供器：{active_providers}')
+        self._model = model
+        self._device = 'cuda' if 'CUDAExecutionProvider' in active_providers else 'cpu'
+        return self._model, self._device
 
     def rank(self, question, candidates, config):
         original = [dict(item) for item in candidates]

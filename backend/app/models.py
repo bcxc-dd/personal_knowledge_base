@@ -53,7 +53,7 @@ class ModelClient:
             with self._lock:
                 if self._local is None:
                     from fastembed import TextEmbedding
-                    self._local = TextEmbedding(LOCAL_MODEL, cache_dir=str(self.cache), threads=2)
+                    self._local = TextEmbedding(LOCAL_MODEL, cache_dir=str(self.cache), threads=2, cuda=False)
                 # BGE's retrieval instruction is only used for query vectors.
                 inputs = ['为这个句子生成表示以用于检索相关文章：' + t for t in texts] if query else texts
                 return [v.tolist() for v in self._local.embed(inputs, batch_size=16)]

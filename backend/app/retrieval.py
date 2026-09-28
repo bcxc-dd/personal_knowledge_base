@@ -1,6 +1,22 @@
 RRF_K = 60
 
 
+def merge_vector_query_hits(query_results, limit, rrf_k=RRF_K):
+    """Combine original and one rewritten vector query before route fusion."""
+    if len(query_results) == 1:
+        return query_results[0]
+    merged = {}
+    for query_index, hits in enumerate(query_results):
+        for rank, hit in enumerate(hits, 1):
+            key = hit['chunk_id']
+            item = merged.setdefault(key, {**hit, 'vector_query_indices': [], 'vector_query_score': 0.0})
+            item['vector_query_indices'].append(query_index)
+            item['vector_query_score'] += 1 / (rrf_k + rank)
+    return sorted(merged.values(), key=lambda item: (-item['vector_query_score'],
+                                                    0 if 0 in item['vector_query_indices'] else 1,
+                                                    item['chunk_id']))[:limit]
+
+
 def fuse_candidates(vector_hits, lexical_hits, rrf_k=RRF_K):
     """Merge independent retrieval routes and rank their union with RRF."""
     merged = {}
