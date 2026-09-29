@@ -4,6 +4,7 @@ from typing import Literal
 import json
 import mimetypes
 import os
+import re
 import threading
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -14,6 +15,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .engine import Engine
 from .models import LOCAL_MODEL, fingerprint, validate_url
+from .pdf_review import has_suspect_glyphs
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -127,7 +129,17 @@ def create_app(engine=None, run_worker=True):
 
     @app.get('/api/documents/{doc_id}')
     def detail(doc_id: str):
-        return {**public_document(document_or_404(doc_id)), 'chunks': engine.store.chunks(doc_id)}
+        doc = document_or_404(doc_id)
+        chunks = engine.store.chunks(doc_id)
+        suspicious_pages = set()
+        if doc['suffix'] == '.pdf':
+            for chunk in chunks:
+                chunk['suspected'] = has_suspect_glyphs(chunk['text'])
+                if chunk['suspected']:
+                    match = re.fullmatch(r'第 (\d+) 页', chunk['location'])
+                    if match:
+                        suspicious_pages.add(int(match.group(1)))
+        return {**public_document(doc), 'chunks': chunks, 'suspicious_pages': sorted(suspicious_pages)}
 
     @app.get('/api/documents/{doc_id}/file')
     def original(doc_id: str):

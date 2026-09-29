@@ -28,6 +28,27 @@ def test_upload_api_rejects_invalid_and_exposes_no_disk_path(tmp_path):
         assert client.get('/api/documents/' + doc['id']).status_code == 404
 
 
+def test_pdf_detail_marks_suspicious_chunks_and_pages_without_marking_text_files(tmp_path):
+    client, engine = client_for(tmp_path)
+    pdf, _ = engine.upload('sample.pdf', b'%PDF-1.7', 'default')
+    engine.store.replace_chunks(pdf['id'], [
+        {'ordinal': 0, 'location': '第 9 页', 'text': 'CSP g_i = \uf03d 0.2'},
+        {'ordinal': 1, 'location': '第 10 页', 'text': '普通正文'},
+    ])
+    text, _ = engine.upload('sample.txt', b'plain', 'default')
+    engine.store.replace_chunks(text['id'], [
+        {'ordinal': 0, 'location': '第 1 段', 'text': '特殊字符 \uf03d'},
+    ])
+    with client:
+        pdf_detail = client.get('/api/documents/' + pdf['id']).json()
+        text_detail = client.get('/api/documents/' + text['id']).json()
+
+    assert pdf_detail['suspicious_pages'] == [9]
+    assert [c['suspected'] for c in pdf_detail['chunks']] == [True, False]
+    assert text_detail['suspicious_pages'] == []
+    assert not text_detail['chunks'][0].get('suspected', False)
+
+
 def test_settings_keys_never_return_and_blank_preserves_key(tmp_path):
     client, _ = client_for(tmp_path)
     with client:
