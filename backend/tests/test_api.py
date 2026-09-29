@@ -1,7 +1,10 @@
 import importlib.util
+from io import BytesIO
 import json
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
+from test_pdf_review import make_text_pdf
 from test_rag import make_engine
 
 
@@ -47,6 +50,102 @@ def test_pdf_detail_marks_suspicious_chunks_and_pages_without_marking_text_files
     assert [c['suspected'] for c in pdf_detail['chunks']] == [True, False]
     assert text_detail['suspicious_pages'] == []
     assert not text_detail['chunks'][0].get('suspected', False)
+
+
+def test_pdf_page_api_saves_reindexes_and_reverts_corrected_text(tmp_path):
+    client, engine = client_for(tmp_path / 'data')
+    content = make_text_pdf(tmp_path / 'sample.pdf', ['Bad formula. Other requirement.'])
+    with client:
+        doc = client.post('/api/documents', files={'file': ('sample.pdf', content, 'application/pdf')}).json()['document']
+        engine.process_document(doc['id'])
+        page_url = f'/api/documents/{doc["id"]}/pdf-pages/1'
+        page = client.get(page_url).json()
+        assert page['raw_text'] == 'Bad formula. Other requirement.'
+        assert page['page_count'] == 1
+        assert page['suspected'] is False
+        assert page['correction'] is None and page['revision'] is None
+        assert len(page['source_hash']) == len(page['raw_text_hash']) == 64
+        assert client.get(page_url + '/correction-image').status_code == 404
+        original = client.get(f'/api/documents/{doc["id"]}/file')
+        assert original.headers['content-type'].startswith('application/pdf')
+        assert 'inline' in original.headers['content-disposition']
+
+        form = {key: page[key] for key in ('source_hash', 'raw_text_hash')}
+        form.update(corrected_text='g_i = 0.2 if x_i >= 300. Other requirement.', expected_revision='')
+        saved = client.put(page_url + '/correction', data=form)
+        assert saved.status_code == 200
+        assert engine.store.document(doc['id'])['status'] == 'queued'
+        stale = client.put(page_url + '/correction', data={**form, 'corrected_text': 'Another formula.'})
+        assert stale.status_code == 409
+
+        engine.process_document(doc['id'])
+        assert engine.store.document(doc['id'])['status'] == 'ready'
+        assert client.get(f'/api/documents/{doc["id"]}').json()['chunks'][0]['text'] == form['corrected_text']
+        current = client.get(page_url).json()
+        assert current['correction'] == form['corrected_text']
+        assert current['revision']
+        assert client.delete(page_url + '/correction').status_code == 200
+        engine.process_document(doc['id'])
+        assert client.get(f'/api/documents/{doc["id"]}').json()['chunks'][0]['text'] == page['raw_text']
+
+
+def test_pdf_page_api_rejects_invalid_page_text_hash_rectangle_and_processing(tmp_path):
+    client, engine = client_for(tmp_path / 'data')
+    content = make_text_pdf(tmp_path / 'sample.pdf', ['Bad formula.'])
+    with client:
+        pdf = client.post('/api/documents', files={'file': ('sample.pdf', content, 'application/pdf')}).json()['document']
+        text = client.post('/api/documents', files={'file': ('sample.txt', b'hello')}).json()['document']
+        engine.process_document(pdf['id'])
+        url = f'/api/documents/{pdf["id"]}/pdf-pages/1'
+        page = client.get(url).json()
+        form = {'source_hash': page['source_hash'], 'raw_text_hash': page['raw_text_hash'],
+                'corrected_text': 'Good formula.', 'expected_revision': ''}
+
+        assert client.get(f'/api/documents/{pdf["id"]}/pdf-pages/0').status_code == 400
+        assert client.get(f'/api/documents/{pdf["id"]}/pdf-pages/2').status_code == 400
+        assert client.get(f'/api/documents/{text["id"]}/pdf-pages/1').status_code == 400
+        assert client.put(url + '/correction', data={**form, 'source_hash': 'old'}).status_code == 400
+        assert client.put(url + '/correction', data={**form, 'raw_text_hash': 'old'}).status_code == 400
+        assert client.put(url + '/correction', data={**form, 'corrected_text': '  '}).status_code == 400
+        assert client.put(url + '/correction', data={**form, 'corrected_text': 'x' * 100_001}).status_code == 400
+        assert client.put(url + '/correction', data={**form, 'corrected_text': page['raw_text']}).status_code == 400
+        assert client.put(url + '/correction', data={**form, 'rect': '[0.8,0.2,0.1,0.5]'}).status_code == 400
+        assert client.put(url + '/correction', data={**form, 'rect': 'bad-json'}).status_code == 400
+        engine.store.update_document(pdf['id'], status='embedding')
+        assert client.put(url + '/correction', data=form).status_code == 409
+        engine.store.update_document(pdf['id'], status='ready')
+        assert engine.store.pdf_correction(pdf['id'], 1) is None
+
+
+def test_pdf_correction_image_is_verified_served_and_cleaned_up(tmp_path):
+    client, engine = client_for(tmp_path / 'data')
+    content = make_text_pdf(tmp_path / 'sample.pdf', ['Bad formula.'])
+    png = BytesIO()
+    Image.new('RGB', (16, 16), 'white').save(png, format='PNG')
+    with client:
+        doc = client.post('/api/documents', files={'file': ('sample.pdf', content, 'application/pdf')}).json()['document']
+        engine.process_document(doc['id'])
+        url = f'/api/documents/{doc["id"]}/pdf-pages/1'
+        page = client.get(url).json()
+        form = {'source_hash': page['source_hash'], 'raw_text_hash': page['raw_text_hash'],
+                'corrected_text': 'Good formula.', 'expected_revision': ''}
+        assert client.put(url + '/correction', data=form,
+                          files={'image': ('proof.png', b'not-a-png', 'image/png')}).status_code == 400
+        assert client.put(url + '/correction', data=form,
+                          files={'image': ('proof.png', b'x' * (2 * 1024 * 1024 + 1), 'image/png')}).status_code == 400
+        assert not list((engine.root / 'review_images').glob('*')) if (engine.root / 'review_images').exists() else True
+
+        saved = client.put(url + '/correction', data=form,
+                           files={'image': ('proof.png', png.getvalue(), 'image/png')})
+        assert saved.status_code == 200
+        image = client.get(url + '/correction-image')
+        assert image.status_code == 200 and image.content == png.getvalue()
+        assert client.get(url).json()['has_image'] is True
+        assert 'image_path' not in client.get(url).text
+        image_path = engine.store.pdf_correction(doc['id'], 1)['image_path']
+        assert image_path and (engine.root / 'review_images').exists()
+        assert client.delete(f'/api/documents/{doc["id"]}').status_code == 200
+        assert not list((engine.root / 'review_images').glob('*'))
 
 
 def test_settings_keys_never_return_and_blank_preserves_key(tmp_path):

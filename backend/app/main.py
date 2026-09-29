@@ -15,7 +15,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from .engine import Engine
 from .models import LOCAL_MODEL, fingerprint, validate_url
-from .pdf_review import has_suspect_glyphs
+from .pdf_review import PdfReviewConflict, has_suspect_glyphs
+from .pdf_review_api import pdf_review_router
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -89,6 +90,12 @@ def create_app(engine=None, run_worker=True):
     async def value_error(request, exc):
         return JSONResponse({'detail': str(exc)}, status_code=400)
 
+    @app.exception_handler(PdfReviewConflict)
+    async def pdf_review_conflict(request, exc):
+        return JSONResponse({'detail': str(exc)}, status_code=409)
+
+    app.include_router(pdf_review_router(engine))
+
     def document_or_404(doc_id):
         doc = engine.store.document(doc_id)
         if not doc:
@@ -144,6 +151,9 @@ def create_app(engine=None, run_worker=True):
     @app.get('/api/documents/{doc_id}/file')
     def original(doc_id: str):
         doc = document_or_404(doc_id)
+        if doc['suffix'] == '.pdf':
+            return FileResponse(doc['path'], filename=doc['name'], media_type='application/pdf',
+                                content_disposition_type='inline')
         return FileResponse(doc['path'], filename=doc['name'], media_type='application/octet-stream')
 
     @app.post('/api/documents/{doc_id}/retry')
