@@ -4,7 +4,7 @@ from io import BytesIO
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from PIL import Image, UnidentifiedImageError
 
@@ -104,9 +104,9 @@ def pdf_review_router(engine) -> APIRouter:
         return {'ok': True, 'revision': result['updated_at']}
 
     @router.delete('/api/documents/{doc_id}/pdf-pages/{page_number}/correction')
-    def delete_correction(doc_id: str, page_number: int):
+    def delete_correction(doc_id: str, page_number: int, expected_revision: str = Query(..., min_length=1)):
         pdf_or_404(doc_id)
-        engine.clear_pdf_correction(doc_id, page_number)
+        engine.clear_pdf_correction(doc_id, page_number, expected_revision)
         return {'ok': True}
 
     return router

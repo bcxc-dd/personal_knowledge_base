@@ -135,11 +135,12 @@ class Engine:
         return self.store.document(doc_id), False
 
     def process_document(self, doc_id):
-        doc = self.store.document(doc_id)
-        if not doc:
-            return
         try:
-            self.store.update_document(doc_id, status='parsing', error='')
+            with self.mutation_lock:
+                doc = self.store.document(doc_id)
+                if not doc:
+                    return
+                self.store.update_document(doc_id, status='parsing', error='')
             sections = parse_file(Path(doc['path']), doc['suffix'])
             if doc['suffix'] == '.pdf':
                 sections = apply_pdf_corrections(sections, self.store.pdf_corrections(doc_id), doc['hash'])
@@ -213,7 +214,7 @@ class Engine:
         self.wake.set()
         return result
 
-    def clear_pdf_correction(self, doc_id: str, page_number: int) -> dict | None:
+    def clear_pdf_correction(self, doc_id: str, page_number: int, expected_revision: str) -> dict | None:
         with self.mutation_lock:
             doc = self.store.document(doc_id)
             if not doc or doc['suffix'] != '.pdf':
@@ -221,7 +222,7 @@ class Engine:
             if doc['status'] in {'parsing', 'embedding', 'indexing'}:
                 raise PdfReviewConflict('资料正在处理，请完成后再撤销。')
             read_pdf_page(Path(doc['path']), page_number)
-            previous = self.store.remove_pdf_correction(doc_id, page_number)
+            previous = self.store.remove_pdf_correction(doc_id, page_number, expected_revision)
             if previous and previous['image_path']:
                 self._delete_review_image(previous['image_path'])
         if previous:

@@ -78,6 +78,7 @@ export function usePdfPageReview(documentId: string, pageNumber: number, onSaved
   }, [page?.source_hash, documentId, pageNumber, zoom]);
 
   const setImage = (file: File | null) => {
+    if (busy) return;
     if (!file) return;
     if (!['image/png', 'image/jpeg'].includes(file.type)) {
       setError('截图请使用 PNG 或 JPEG 格式。');
@@ -121,10 +122,10 @@ export function usePdfPageReview(documentId: string, pageNumber: number, onSaved
   };
 
   const revert = async () => {
-    if (!page?.correction || busy || !confirmRevert) return;
+    if (!page?.correction || !page.revision || busy || !confirmRevert) return;
     setBusy(true); setError(''); setNotice('');
     try {
-      await api.removePdfCorrection(documentId, pageNumber);
+      await api.removePdfCorrection(documentId, pageNumber, page.revision);
       await load();
       await onSaved();
       setNotice('修订已撤销，资料正在重新处理。');
@@ -136,15 +137,16 @@ export function usePdfPageReview(documentId: string, pageNumber: number, onSaved
   };
 
   const pointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (busy) return;
     setDragStart({ x: event.clientX, y: event.clientY });
     setDragCurrent({ x: event.clientX, y: event.clientY });
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
   const pointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (dragStart) setDragCurrent({ x: event.clientX, y: event.clientY });
+    if (!busy && dragStart) setDragCurrent({ x: event.clientX, y: event.clientY });
   };
   const pointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (dragStart && canvasWrapRef.current) {
+    if (!busy && dragStart && canvasWrapRef.current) {
       const selection = normalizeSelection(canvasWrapRef.current.getBoundingClientRect(), dragStart,
         { x: event.clientX, y: event.clientY });
       if (selection) setRect(selection);
@@ -154,7 +156,7 @@ export function usePdfPageReview(documentId: string, pageNumber: number, onSaved
   const liveRect = dragStart && dragCurrent && canvasWrapRef.current
     ? normalizeSelection(canvasWrapRef.current.getBoundingClientRect(), dragStart, dragCurrent) : null;
 
-  return { page, draft, setDraft: (value: string) => { setDraft(value); setConfirmed(false); }, baseline,
+  return { page, draft, setDraft: (value: string) => { if (!busy) { setDraft(value); setConfirmed(false); } }, baseline,
     rect: liveRect ?? rect, setRect, screenshotUrl, setImage, confirmed, setConfirmed, confirmRevert, setConfirmRevert,
     busy, loading, error, notice, zoom, setZoom, renderError, canvasRef, canvasWrapRef,
     pointerDown, pointerMove, pointerUp, changed, canSave, save, revert };

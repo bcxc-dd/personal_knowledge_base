@@ -1,4 +1,5 @@
 from pathlib import Path
+import threading
 
 import pytest
 from pypdf import PdfWriter
@@ -105,7 +106,7 @@ def test_pdf_correction_rebuild_replaces_old_vectors_and_revert_restores_origina
     engine.retry(doc['id'])
     engine.process_document(doc['id'])
     assert engine.store.chunks(doc['id'])[0]['text'] == corrected
-    engine.clear_pdf_correction(doc['id'], 1)
+    engine.clear_pdf_correction(doc['id'], 1, engine.store.pdf_correction(doc['id'], 1)['updated_at'])
     engine.process_document(doc['id'])
     assert len(engine.store.chunks(doc['id'])) == len(old_chunks)
     assert engine.store.chunks(doc['id'])[0]['text'].startswith('Bad formula.')
@@ -132,3 +133,57 @@ def test_pdf_correction_uses_original_hash_and_delete_removes_saved_image(tmp_pa
     engine.delete_document(doc['id'])
     assert engine.store.pdf_correction(doc['id'], 1) is None
     assert not image.exists()
+
+
+def test_worker_claim_waits_for_pending_correction_and_indexes_new_revision(tmp_path, monkeypatch):
+    from app import engine as engine_module
+    from app.pdf_review import text_hash
+    from test_rag import make_engine
+
+    engine = make_engine(tmp_path / 'data')
+    doc, _ = engine.upload('sample.pdf', make_text_pdf(tmp_path / 'sample.pdf', ['Bad formula.']), 'default')
+    engine.process_document(doc['id'])
+    old = engine.set_pdf_correction(doc['id'], 1, doc['hash'], text_hash('Bad formula.'),
+                                    'Old correction.', None, None, None)
+
+    entered_read = threading.Event()
+    release_read = threading.Event()
+    parsing_claimed = threading.Event()
+    failures = []
+    original_read = engine_module.read_pdf_page
+    original_update = engine.store.update_document
+
+    def blocked_read(*args):
+        entered_read.set()
+        assert release_read.wait(5)
+        return original_read(*args)
+
+    def observed_update(doc_id, **fields):
+        if fields.get('status') == 'parsing':
+            parsing_claimed.set()
+        return original_update(doc_id, **fields)
+
+    def run(call):
+        try:
+            call()
+        except Exception as exc:
+            failures.append(exc)
+
+    monkeypatch.setattr(engine_module, 'read_pdf_page', blocked_read)
+    monkeypatch.setattr(engine.store, 'update_document', observed_update)
+    setter = threading.Thread(target=lambda: run(lambda: engine.set_pdf_correction(
+        doc['id'], 1, doc['hash'], text_hash('Bad formula.'), 'New correction.', None, None,
+        old['updated_at'])))
+    setter.start()
+    assert entered_read.wait(5)
+    worker = threading.Thread(target=lambda: run(lambda: engine.process_document(doc['id'])))
+    worker.start()
+    try:
+        assert not parsing_claimed.wait(0.25), 'worker claimed the document while correction held mutation_lock'
+    finally:
+        release_read.set()
+        setter.join(10)
+        worker.join(10)
+    assert not setter.is_alive() and not worker.is_alive() and not failures
+    assert engine.store.document(doc['id'])['status'] == 'ready'
+    assert engine.store.chunks(doc['id'])[0]['text'] == 'New correction.'

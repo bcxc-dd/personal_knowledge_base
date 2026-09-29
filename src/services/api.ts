@@ -22,8 +22,8 @@ export const api = {
   pdfPage: (id: string, page: number) => request<PdfPageResponse>(`/documents/${id}/pdf-pages/${page}`),
   savePdfCorrection: (id: string, page: number, form: FormData) =>
     request<{ ok: boolean; revision: string }>(`/documents/${id}/pdf-pages/${page}/correction`, { method: 'PUT', body: form }),
-  removePdfCorrection: (id: string, page: number) =>
-    request<{ ok: boolean }>(`/documents/${id}/pdf-pages/${page}/correction`, { method: 'DELETE' }),
+    removePdfCorrection: (id: string, page: number, revision: string) =>
+      request<{ ok: boolean }>(`/documents/${id}/pdf-pages/${page}/correction?expected_revision=${encodeURIComponent(revision)}`, { method: 'DELETE' }),
   upload: (file: File, kb: string) => {
     const form = new FormData(); form.append('file', file); form.append('kb_id', kb);
     return request<{ document: KnowledgeDocument; duplicate: boolean }>('/documents', { method: 'POST', body: form });

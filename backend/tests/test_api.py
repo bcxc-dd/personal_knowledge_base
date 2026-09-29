@@ -84,9 +84,32 @@ def test_pdf_page_api_saves_reindexes_and_reverts_corrected_text(tmp_path):
         current = client.get(page_url).json()
         assert current['correction'] == form['corrected_text']
         assert current['revision']
-        assert client.delete(page_url + '/correction').status_code == 200
+        assert client.delete(page_url + '/correction', params={'expected_revision': current['revision']}).status_code == 200
         engine.process_document(doc['id'])
         assert client.get(f'/api/documents/{doc["id"]}').json()['chunks'][0]['text'] == page['raw_text']
+
+
+def test_pdf_page_delete_rejects_stale_revision(tmp_path):
+    client, engine = client_for(tmp_path / 'data')
+    content = make_text_pdf(tmp_path / 'sample.pdf', ['Bad formula.'])
+    with client:
+        doc = client.post('/api/documents', files={'file': ('sample.pdf', content, 'application/pdf')}).json()['document']
+        engine.process_document(doc['id'])
+        url = f'/api/documents/{doc["id"]}/pdf-pages/1'
+        page = client.get(url).json()
+        base = {'source_hash': page['source_hash'], 'raw_text_hash': page['raw_text_hash']}
+        first = client.put(url + '/correction', data={**base, 'corrected_text': 'First.', 'expected_revision': ''})
+        assert first.status_code == 200
+        engine.process_document(doc['id'])
+        second = client.put(url + '/correction', data={**base, 'corrected_text': 'Second.',
+                                                       'expected_revision': first.json()['revision']})
+        assert second.status_code == 200
+        engine.process_document(doc['id'])
+        assert client.delete(url + '/correction').status_code == 422
+        assert client.delete(url + '/correction', params={'expected_revision': first.json()['revision']}).status_code == 409
+        assert engine.store.pdf_correction(doc['id'], 1)['corrected_text'] == 'Second.'
+        assert engine.store.document(doc['id'])['status'] == 'ready'
+        assert client.delete(url + '/correction', params={'expected_revision': second.json()['revision']}).status_code == 200
 
 
 def test_pdf_page_api_rejects_invalid_page_text_hash_rectangle_and_processing(tmp_path):

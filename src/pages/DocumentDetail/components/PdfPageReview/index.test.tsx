@@ -63,6 +63,8 @@ test('review compares original text, confirms full-page change, and sends hashes
   fireEvent.click(submit);
   fireEvent.click(submit);
   await waitFor(() => expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'PUT')).toHaveLength(1));
+  expect((editor as HTMLTextAreaElement).disabled).toBe(true);
+  expect((screen.getByLabelText('上传公式截图') as HTMLInputElement).disabled).toBe(true);
   const put = fetcher.mock.calls.find(([, init]) => init?.method === 'PUT')!;
   const form = put[1]!.body as FormData;
   expect(form.get('source_hash')).toBe('source-sha');
@@ -88,6 +90,8 @@ test('review shows upload errors and permits reverting an existing correction', 
   fireEvent.click(screen.getByRole('button', { name: '撤销本页修订' }));
   fireEvent.click(screen.getByRole('button', { name: '确认撤销' }));
   await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true));
+  const withdrawal = fetcher.mock.calls.find(([, init]) => init?.method === 'DELETE')!;
+  expect(withdrawal[0]).toContain('expected_revision=revision-1');
 });
 
 test('selection coordinates are normalized and clamped to the PDF canvas', async () => {

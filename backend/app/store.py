@@ -176,10 +176,12 @@ class Store:
                              (doc_id, page_number)).fetchone()
         return self._pdf_correction(row)
 
-    def remove_pdf_correction(self, doc_id: str, page_number: int) -> dict | None:
+    def remove_pdf_correction(self, doc_id: str, page_number: int, expected_revision: str) -> dict | None:
         with self.connection() as db:
             previous = db.execute('SELECT * FROM pdf_page_corrections WHERE document_id=? AND page_number=?',
                                   (doc_id, page_number)).fetchone()
+            if (previous['updated_at'] if previous else None) != expected_revision:
+                raise PdfReviewConflict('这页校对已被另一处更新，请刷新后再撤销。')
             if not previous:
                 return None
             db.execute('DELETE FROM pdf_page_corrections WHERE document_id=? AND page_number=?',
