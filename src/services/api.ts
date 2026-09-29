@@ -1,4 +1,4 @@
-import type { Conversation, DocumentDetail, KnowledgeBase, KnowledgeDocument, Message, ModelSettings } from '../types';
+import type { Conversation, DocumentDetail, KnowledgeBase, KnowledgeDocument, Message, ModelSettings, PdfPageResponse } from '../types';
 export interface Note { id: string; title: string; question: string; content: string; created_at: string; updated_at: string; citations: any[] }
 import { consumeEvents, type StreamEvent } from './stream';
 
@@ -19,6 +19,11 @@ export const api = {
   createKb: (name: string) => request<KnowledgeBase>('/knowledge-bases', json('POST', { name })),
   documents: (kb?: string) => request<KnowledgeDocument[]>('/documents' + (kb ? `?kb_id=${encodeURIComponent(kb)}` : '')),
   document: (id: string) => request<DocumentDetail>(`/documents/${id}`),
+  pdfPage: (id: string, page: number) => request<PdfPageResponse>(`/documents/${id}/pdf-pages/${page}`),
+  savePdfCorrection: (id: string, page: number, form: FormData) =>
+    request<{ ok: boolean; revision: string }>(`/documents/${id}/pdf-pages/${page}/correction`, { method: 'PUT', body: form }),
+  removePdfCorrection: (id: string, page: number) =>
+    request<{ ok: boolean }>(`/documents/${id}/pdf-pages/${page}/correction`, { method: 'DELETE' }),
   upload: (file: File, kb: string) => {
     const form = new FormData(); form.append('file', file); form.append('kb_id', kb);
     return request<{ document: KnowledgeDocument; duplicate: boolean }>('/documents', { method: 'POST', body: form });

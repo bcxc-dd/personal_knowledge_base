@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../../../services/api';
 import type { DocumentDetail } from '../../../types';
@@ -9,7 +9,14 @@ export function useDocumentDetail() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [reviewPage, setReviewPage] = useState<number | null>(null);
   const chunkId = params.get('chunk');
+  const refresh = useCallback(async () => {
+    if (!id) return;
+    const detail = await api.document(id);
+    setDoc(detail);
+    setError('');
+  }, [id]);
   useEffect(() => {
     let active = true;
     const load = () => api.document(id!).then(d => { if (active) { setDoc(d); setError(''); } }).catch(e => { if (active) setError(errorMessage(e)); }).finally(() => { if (active) setLoading(false); });
@@ -17,5 +24,5 @@ export function useDocumentDetail() {
     return () => { active = false; clearInterval(timer); };
   }, [id]);
   useEffect(() => { if (doc && chunkId) document.getElementById(chunkId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, [doc?.id, chunkId]);
-  return { doc, loading, error, query, setQuery, chunkId };
+  return { doc, loading, error, query, setQuery, chunkId, reviewPage, setReviewPage, refresh };
 }

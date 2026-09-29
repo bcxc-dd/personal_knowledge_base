@@ -3,8 +3,13 @@ export interface KnowledgeDocument {
   id: string; kb_id: string; name: string; suffix: string; size: number; status: string;
   error: string; chunk_count: number; created_at: string; updated_at: string; needs_reindex: boolean;
 }
-export interface Chunk { id: string; text: string; ordinal: number; location: string }
-export interface DocumentDetail extends KnowledgeDocument { chunks: Chunk[] }
+export interface Chunk { id: string; text: string; ordinal: number; location: string; suspected?: boolean }
+export interface DocumentDetail extends KnowledgeDocument { chunks: Chunk[]; suspicious_pages?: number[] }
+export interface PdfPageResponse {
+  raw_text: string; page_count: number; source_hash: string; raw_text_hash: string;
+  suspected: boolean; correction: string | null; revision: string | null;
+  rect: [number, number, number, number] | null; has_image: boolean;
+}
 export interface Citation { id: number; document_id: string; chunk_id: string; name: string; text: string; location: string; deleted?: boolean }
 export interface RetrievalDiagnosticItem extends Citation { vector_similarity?: number | null; distance?: number; rerank_score?: number; vector_rank?: number | null; lexical_rank?: number | null; lexical_score?: number | null; retrieval_sources?: Array<'vector' | 'lexical'>; fused_rank?: number; fused_score?: number; rerank_rank?: number; selected?: boolean }
 export interface RetrievalDiagnostics { candidate_count: number; vector_candidate_count?: number; lexical_candidate_count?: number; rrf_k?: number; vector_items?: RetrievalDiagnosticItem[]; lexical_items?: RetrievalDiagnosticItem[]; items: RetrievalDiagnosticItem[]; provider: string; device: string; fallback: boolean; error?: string | null }
