@@ -5,6 +5,8 @@ import json
 import sqlite3
 import uuid
 
+from .pdf_review import PdfReviewConflict
+
 DEFAULTS = {
     'chat_url': 'https://api.deepseek.com', 'chat_model': 'deepseek-flash', 'chat_key': '',
     'embedding_mode': 'local', 'embedding_url': '', 'embedding_model': 'BAAI/bge-small-zh-v1.5',
@@ -41,6 +43,13 @@ class Store:
                     id TEXT PRIMARY KEY, document_id TEXT, ordinal INTEGER, text TEXT, location TEXT
                 );
                 CREATE INDEX IF NOT EXISTS chunks_doc ON chunks(document_id);
+                CREATE TABLE IF NOT EXISTS pdf_page_corrections (
+                    document_id TEXT NOT NULL, page_number INTEGER NOT NULL,
+                    source_hash TEXT NOT NULL, raw_text_hash TEXT NOT NULL,
+                    corrected_text TEXT NOT NULL, rect TEXT, image_path TEXT,
+                    created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+                    PRIMARY KEY (document_id, page_number)
+                );
                 CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, title TEXT, kb_id TEXT, created_at TEXT);
                 CREATE TABLE IF NOT EXISTS messages (
                     id TEXT PRIMARY KEY, conversation_id TEXT, role TEXT, content TEXT, citations TEXT, status TEXT, created_at TEXT
@@ -125,6 +134,59 @@ class Store:
 
     def chunks(self, doc_id):
         return self.query('SELECT * FROM chunks WHERE document_id=? ORDER BY ordinal', (doc_id,))
+
+    @staticmethod
+    def _pdf_correction(row):
+        value = dict(row)
+        value['rect'] = json.loads(value['rect']) if value['rect'] else None
+        return value
+
+    def pdf_correction(self, doc_id: str, page_number: int) -> dict | None:
+        rows = self.query('SELECT * FROM pdf_page_corrections WHERE document_id=? AND page_number=?',
+                          (doc_id, page_number))
+        return self._pdf_correction(rows[0]) if rows else None
+
+    def pdf_corrections(self, doc_id: str) -> list[dict]:
+        return [self._pdf_correction(row) for row in self.query(
+            'SELECT * FROM pdf_page_corrections WHERE document_id=? ORDER BY page_number', (doc_id,))]
+
+    def put_pdf_correction(self, doc_id: str, page_number: int, source_hash: str,
+                           raw_text_hash: str, corrected_text: str, rect: list[float] | None,
+                           image_path: str | None, expected_revision: str | None) -> dict:
+        timestamp = now()
+        with self.connection() as db:
+            previous = db.execute('SELECT * FROM pdf_page_corrections WHERE document_id=? AND page_number=?',
+                                  (doc_id, page_number)).fetchone()
+            if (previous['updated_at'] if previous else None) != (expected_revision or None):
+                raise PdfReviewConflict('这页校对已被另一处更新，请刷新后再提交。')
+            db.execute('''INSERT INTO pdf_page_corrections
+                          (document_id,page_number,source_hash,raw_text_hash,corrected_text,rect,image_path,created_at,updated_at)
+                          VALUES (?,?,?,?,?,?,?,?,?)
+                          ON CONFLICT(document_id,page_number) DO UPDATE SET
+                          source_hash=excluded.source_hash, raw_text_hash=excluded.raw_text_hash,
+                          corrected_text=excluded.corrected_text, rect=excluded.rect,
+                          image_path=excluded.image_path, updated_at=excluded.updated_at''',
+                       (doc_id, page_number, source_hash, raw_text_hash, corrected_text,
+                        json.dumps(rect) if rect else None, image_path,
+                        previous['created_at'] if previous else timestamp, timestamp))
+            if not db.execute("UPDATE documents SET status='queued',error='',updated_at=? WHERE id=? AND deleted=0",
+                              (timestamp, doc_id)).rowcount:
+                raise ValueError('资料不存在或已删除。')
+            row = db.execute('SELECT * FROM pdf_page_corrections WHERE document_id=? AND page_number=?',
+                             (doc_id, page_number)).fetchone()
+        return self._pdf_correction(row)
+
+    def remove_pdf_correction(self, doc_id: str, page_number: int) -> dict | None:
+        with self.connection() as db:
+            previous = db.execute('SELECT * FROM pdf_page_corrections WHERE document_id=? AND page_number=?',
+                                  (doc_id, page_number)).fetchone()
+            if not previous:
+                return None
+            db.execute('DELETE FROM pdf_page_corrections WHERE document_id=? AND page_number=?',
+                       (doc_id, page_number))
+            db.execute("UPDATE documents SET status='queued',error='',updated_at=? WHERE id=? AND deleted=0",
+                       (now(), doc_id))
+        return self._pdf_correction(previous)
 
     def search_chunks_exact(self, document_ids, terms, limit=8):
         if not document_ids or not terms:

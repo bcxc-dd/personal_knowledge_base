@@ -1,4 +1,5 @@
 import hashlib
+import math
 import re
 import sqlite3
 import threading
@@ -15,6 +16,7 @@ from .terms import acronym_terms, lexical_terms
 from .evidence import assess_evidence, evidence_excerpt, is_eligibility_question
 from .context import chapter_context_hits, condition_context_hits
 from .query_plan import build_query_plan
+from .pdf_review import PdfReviewConflict, apply_pdf_corrections, read_pdf_page, text_hash
 
 
 class RetrievalResult(list):
@@ -138,10 +140,14 @@ class Engine:
             return
         try:
             self.store.update_document(doc_id, status='parsing', error='')
-            chunks = split_sections(parse_file(Path(doc['path']), doc['suffix']))
+            sections = parse_file(Path(doc['path']), doc['suffix'])
+            if doc['suffix'] == '.pdf':
+                sections = apply_pdf_corrections(sections, self.store.pdf_corrections(doc_id), doc['hash'])
+            chunks = split_sections(sections)
             with self.mutation_lock:
                 if not self.store.document(doc_id):
                     return
+                self.vectors.delete(doc_id)
                 self.store.replace_chunks(doc_id, chunks)
                 self.store.update_document(doc_id, chunk_count=len(chunks))
             config = self.store.settings()
@@ -178,14 +184,68 @@ class Engine:
         self.store.update_document(doc_id, status='queued', error='')
         self.wake.set()
 
+    def set_pdf_correction(self, doc_id: str, page_number: int, source_hash: str,
+                           raw_text_hash: str, corrected_text: str, rect: list[float] | None,
+                           image_path: str | None, expected_revision: str | None) -> dict:
+        with self.mutation_lock:
+            doc = self.store.document(doc_id)
+            if not doc or doc['suffix'] != '.pdf':
+                raise ValueError('PDF 资料不存在。')
+            if doc['status'] in {'parsing', 'embedding', 'indexing'}:
+                raise PdfReviewConflict('资料正在处理，请完成后再校对。')
+            if source_hash != doc['hash'] or hashlib.sha256(Path(doc['path']).read_bytes()).hexdigest() != doc['hash']:
+                raise ValueError('PDF 文件哈希已变化，请重新打开资料。')
+            raw_text, _ = read_pdf_page(Path(doc['path']), page_number)
+            if raw_text_hash != text_hash(raw_text):
+                raise ValueError('PDF 页原文哈希已变化，请重新打开本页。')
+            if not corrected_text.strip() or len(corrected_text) > 100_000:
+                raise ValueError('校对文本不能为空且不能超过 100,000 字符。')
+            current = self.store.pdf_correction(doc_id, page_number)
+            if corrected_text.strip() == (current['corrected_text'] if current else raw_text):
+                raise ValueError('校对文本没有变化。')
+            if rect is not None and (len(rect) != 4 or any(not isinstance(n, (int, float)) or not math.isfinite(n) for n in rect)
+                                     or not (0 <= rect[0] < rect[2] <= 1 and 0 <= rect[1] < rect[3] <= 1)):
+                raise ValueError('框选区域无效。')
+            if image_path is not None and not Path(image_path).resolve().is_relative_to(self.root):
+                raise ValueError('截图路径无效。')
+            result = self.store.put_pdf_correction(doc_id, page_number, source_hash, raw_text_hash,
+                                                   corrected_text.strip(), rect, image_path, expected_revision)
+        self.wake.set()
+        return result
+
+    def clear_pdf_correction(self, doc_id: str, page_number: int) -> dict | None:
+        with self.mutation_lock:
+            doc = self.store.document(doc_id)
+            if not doc or doc['suffix'] != '.pdf':
+                raise ValueError('PDF 资料不存在。')
+            if doc['status'] in {'parsing', 'embedding', 'indexing'}:
+                raise PdfReviewConflict('资料正在处理，请完成后再撤销。')
+            read_pdf_page(Path(doc['path']), page_number)
+            previous = self.store.remove_pdf_correction(doc_id, page_number)
+            if previous and previous['image_path']:
+                self._delete_review_image(previous['image_path'])
+        if previous:
+            self.wake.set()
+        return previous
+
+    def _delete_review_image(self, image_path: str) -> None:
+        path = Path(image_path).resolve()
+        if path.is_relative_to(self.root):
+            path.unlink(missing_ok=True)
+
     def delete_document(self, doc_id):
         with self.mutation_lock:
             doc = self.store.document(doc_id)
             if not doc:
                 raise ValueError('资料不存在。')
+            corrections = self.store.pdf_corrections(doc_id)
             self.store.update_document(doc_id, deleted=1, status='deleted')
             self.vectors.delete(doc_id)
             self.store.execute('DELETE FROM chunks WHERE document_id=?', (doc_id,))
+            self.store.execute('DELETE FROM pdf_page_corrections WHERE document_id=?', (doc_id,))
+            for correction in corrections:
+                if correction['image_path']:
+                    self._delete_review_image(correction['image_path'])
             Path(doc['path']).unlink(missing_ok=True)
 
     def retrieve(self, question, kb_id, document_ids, config=None, current_question=None, query_plan=None):
