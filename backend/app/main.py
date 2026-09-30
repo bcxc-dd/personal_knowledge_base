@@ -63,6 +63,7 @@ class NoteUpdate(BaseModel):
 def create_app(engine=None, run_worker=True):
     # Windows registry associations can incorrectly serve modules as text/plain.
     mimetypes.add_type('text/javascript', '.js')
+    mimetypes.add_type('text/javascript', '.mjs')
     mimetypes.add_type('text/css', '.css')
     engine = engine or Engine(Path(os.environ.get('RAG_DATA_DIR', ROOT / 'data')))
     chat_lock = threading.Lock()

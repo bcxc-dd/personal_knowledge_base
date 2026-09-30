@@ -4,7 +4,8 @@ export async function renderPdfPage(canvas: HTMLCanvasElement, url: string, page
                                     scale: number, signal: AbortSignal): Promise<void> {
   const pdfjs = await import('pdfjs-dist');
   if (signal.aborted) return;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  // Bypass any browser cache entry saved while .mjs was served as text/plain.
+  pdfjs.GlobalWorkerOptions.workerSrc = `${workerUrl}${workerUrl.includes('?') ? '&' : '?'}mime=javascript`;
   const loading = pdfjs.getDocument({ url });
   try {
     const pdf = await loading.promise;

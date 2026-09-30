@@ -210,14 +210,17 @@ def test_production_assets_have_executable_mime_and_sample_is_markdown(tmp_path,
     from app import main
     # Windows registry may identify JS as text/plain. Modules must override it.
     mimetypes.add_type('text/plain', '.js')
+    mimetypes.add_type('text/plain', '.mjs')
     dist = tmp_path / 'dist'
     (dist / 'assets').mkdir(parents=True)
     (dist / 'index.html').write_text('<html>app</html>')
     (dist / 'assets' / 'app.js').write_text('export const ready = true;')
+    (dist / 'assets' / 'pdf.worker.mjs').write_text('export const ready = true;')
     (tmp_path / 'public').mkdir()
     (tmp_path / 'public' / 'sample.md').write_text('# sample knowledge', encoding='utf-8')
     monkeypatch.setattr(main, 'ROOT', tmp_path)
     client = TestClient(main.create_app(engine=make_engine(tmp_path / 'store'), run_worker=False))
     with client:
         assert client.get('/assets/app.js').headers['content-type'].startswith(('text/javascript', 'application/javascript'))
+        assert client.get('/assets/pdf.worker.mjs').headers['content-type'].startswith(('text/javascript', 'application/javascript'))
         assert client.get('/sample.md').text.startswith('# sample')

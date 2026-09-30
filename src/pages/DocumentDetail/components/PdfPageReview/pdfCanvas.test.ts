@@ -22,6 +22,7 @@ test('aborted page request never paints an obsolete zoom level', async () => {
   finishPage({ getViewport: () => ({ width: 100, height: 100 }), render });
   await pending;
 
+  expect(pdfMocks.worker.workerSrc).toMatch(/[?&]mime=javascript(?:&|$)/);
   expect(render).not.toHaveBeenCalled();
   expect(destroy).toHaveBeenCalledOnce();
 });
