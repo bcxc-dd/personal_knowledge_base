@@ -29,7 +29,7 @@ function response(value: unknown, status = 200) {
   return { ok: status < 400, status, json: async () => value };
 }
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView'); });
 
 test('PDF detail flags suspect page and keeps manual review entry on normal page', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => response(documentData)));
@@ -37,6 +37,22 @@ test('PDF detail flags suspect page and keeps manual review entry on normal page
 
   expect(await screen.findByText('疑似解析异常')).toBeTruthy();
   expect(screen.getAllByRole('button', { name: '校对本页' })).toHaveLength(2);
+});
+
+test('clicking review brings the panel into view, including when reopening the same page', async () => {
+  const scrollIntoView = vi.fn();
+  HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  vi.stubGlobal('fetch', vi.fn(async (input: string) => response(
+    input.includes('/pdf-pages/') ? pageData : documentData,
+  )));
+  render(<MemoryRouter initialEntries={['/documents/pdf1']}><Routes><Route path="/documents/:id" element={<DocumentDetail />} /></Routes></MemoryRouter>);
+
+  const buttons = await screen.findAllByRole('button', { name: '校对本页' });
+  fireEvent.click(buttons[0]);
+  expect(await screen.findByLabelText('第 9 页公式校对')).toBeTruthy();
+  expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'start' });
+  fireEvent.click(buttons[0]);
+  expect(scrollIntoView).toHaveBeenCalledTimes(2);
 });
 
 test('review compares original text, confirms full-page change, and sends hashes once', async () => {
