@@ -1,0 +1,40 @@
+{
+  "schema": "ai-infra-human-review-v2",
+  "reviewed_on": "2026-09-29",
+  "runtime_report": "test-results/ai-infra-v2-answer-full-review-20260929.json",
+  "gold_suite": "docs/evaluations/ai-infra-answerability-v2.json",
+  "method": "逐题核对金标准全部必要事实、两路候选并集、重排选中、上下文扩展、真实送答片段、最终回答与关键引用。单核心缺任一必要事实记 none；多核心至少一项完整才记 partial。答案完整度按全部核心事实二值判定，q23–q25 单独判边界行为。",
+  "labels": {
+    "full": "全部核心事实齐全",
+    "partial": "至少一项独立核心完整，其他核心不完整",
+    "none": "没有任何完整的独立核心",
+    "not_applicable": "边界题，不计入 22 道可回答题分母"
+  },
+  "cases": [
+    {"id":"q01","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 11 页 :62 定义和资源组成入答；第 13 页 :71 的六层补充有据。"},
+    {"id":"q02","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 11 页 :63 同时支持上下文定义及参数不变时改变任务的原因。"},
+    {"id":"q03","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 14 页 :75 支持独立执行资源及一或多个加速器。"},
+    {"id":"q04","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":false,"scope_issue":false,"note":"第 14 页 :77 已送答，但回答只说逐步生成和复用状态，漏掉前一步输出作为下一步输入。"},
+    {"id":"q05","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 14 页 :77 与第 40 页 :184–185 已送答；回答含复用条件、避免旧 token 重算，且说明当前注意力仍计算。"},
+    {"id":"q06","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 14 页 :75–77 已送答，回答列出入口检查、路由、token 化、排队合批、状态分配、CPU 提交和 GPU 执行。"},
+    {"id":"q07","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":false,"scope_issue":true,"note":"第 14–15 页 :78–79 有书中常驻路径及多卡边界；回答讲清加载与逐层读取，却把权重需要驻留说成普遍要求，未限定其他部署或单卡例外。"},
+    {"id":"q08","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 13 页 :71 六层名称及职责全部入答。"},
+    {"id":"q09","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 2–3 页 :4–6 已送答，涵盖容量、算力、带宽、串行约束及假设遗漏和实测校正。"},
+    {"id":"q10","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 43–52 页 :196/:199/:231 等支持逐 token 状态增长、decode 旧状态读取和固定状态例外；回答区分容量与累计读取。"},
+    {"id":"q11","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 11 页 :62 同时支持训练调整参数和推理使用参数。"},
+    {"id":"q12","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 84 页 :365、第 40 页 :182 等已送答；回答覆盖权重复用、旧 KV 读取及受 batch、上下文、模型、硬件影响的趋势。"},
+    {"id":"q13","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 15 页 :80、第 119 页 :511–512 支持主存、显存及芯片内缓存的职责；回答完整但篇幅明显超过问题所需。"},
+    {"id":"q14","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"partial","answer_core_complete":false,"scope_issue":false,"note":"选中第 11 页 :64 含选择模型、组织上下文、提供工具及代码继续编排，但评估后未送答；回答只有传统路径和上下文/工具路径，漏选择模型及代码继续组织调用。"},
+    {"id":"q15","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"none","answer_core_complete":false,"scope_issue":false,"note":"选中第 13 页 :71 六层图，却只送第 11 页 :62–64；单核心章总结缺六层协作，回答同样遗漏。"},
+    {"id":"q16","candidate":"full","ranked_selected":"none","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"候选含第 82 页 :359；前六仅第 32 页 :149 等不能覆盖资源变化，章节扩展 :150–151/:359–360 等补齐后，回答完整列出 M/F/R、三类数据和 batch/长度/KV/专家影响。"},
+    {"id":"q17","candidate":"none","ranked_selected":"none","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"原候选只有第 318 页章导言等，缺第 354 页 :1553 决策顺序；章节扩展后进入送答，回答涵盖优化手段及容量→期限→每个合格结果 GPU 时间。"},
+    {"id":"q18","candidate":"none","ranked_selected":"none","contextual_selected":"full","input":"full","answer_core_complete":false,"scope_issue":false,"note":"第 401 页 :1774 与扩展的 :1775–1776、第 446 页 :1969–1971 送答完整；回答讲了容量、调度、ZeRO 和恢复，却漏 RL 的采样/策略版本与训推一致性。"},
+    {"id":"q19","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 44 页 :200 支持 MHA 全称及每个 Q 头独有 KV。"},
+    {"id":"q20","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":true,"scope_issue":false,"note":"第 44–45 页 :200/:202/:203 支持组内共享、每 token KV 组数减少，以及各查询头仍分别进行 QK/AV 运算。"},
+    {"id":"q21","candidate":"full","ranked_selected":"full","contextual_selected":"full","input":"full","answer_core_complete":false,"scope_issue":false,"note":"第 44–45 页 :200/:202/:203 已送答；回答只给所有 Q 头共享一组 KV，漏各 Q 头仍分别评分和输出。"},
+    {"id":"q22","candidate":"partial","ranked_selected":"partial","contextual_selected":"partial","input":"partial","answer_core_complete":false,"scope_issue":false,"note":"第 14 页 :77 支持 K/V 定义与后续注意力使用；候选和送答仍缺明确避免旧 token 表示大量重算的证据，回答也未说出这一点。"},
+    {"id":"q23","candidate":"not_applicable","ranked_selected":"not_applicable","contextual_selected":"not_applicable","input":"not_applicable","answer_core_complete":null,"behavior_correct":true,"scope_issue":false,"note":"追问公司、集群范围、时间点，未虚构 GPU 数。"},
+    {"id":"q24","candidate":"not_applicable","ranked_selected":"not_applicable","contextual_selected":"not_applicable","input":"not_applicable","answer_core_complete":null,"behavior_correct":true,"scope_issue":false,"note":"追问产品、规格、计价单位与时间，未虚构单价。"},
+    {"id":"q25","candidate":"not_applicable","ranked_selected":"not_applicable","contextual_selected":"not_applicable","input":"not_applicable","answer_core_complete":null,"behavior_correct":true,"scope_issue":false,"note":"明确资料不足，未编造 ZZQ 定义。"}
+  ]
+}

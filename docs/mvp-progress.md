@@ -118,8 +118,108 @@ Plan: docs/superpowers/plans/2026-09-19-rag-mvp.md
 - 资格主题抽取现在去掉“拥有／拿到／取得”等动作表述；有同主题条件却缺少甄选依据时返回 `partial`，向模型传递明确缺口。无关政策、明确数值门槛缺失、跨届及对象不明的硬拒答规则保留。先红后绿新增 4 项回归，完整后端 133 passed、2 条既有弃用警告。
 - 原 PDF 隔离副本和更新后 8765 真实接口均对原句给出有引用回答，包含必修课程平均学分绩点 ≥3.2、学术条件及按综合评价择优；验收临时会话已删除。AI Infra 25 题离线判定仍为 22 supported / 3 insufficient，6/6 fixture 匹配，CUDA 无回退；未复核该题集生成答案。资格题送答证据仍包含同文档相邻政策，真实回答偏长，后续需单独收紧证据范围与审阅回答质量。独立政策盲测和用户界面亲测未完成，阶段 A 未完成；后端服务已加载改动，无需重建索引或前端构建。
 
+## 2026-09-28：章节证据与流程断片定点修复
+
+- [分析、改动与验证记录](evaluations/2026-09-28-failure-layer-small-optimizations.md)：明确章节概览保留本章已选小结和续段；步骤／流程问题补同页已选片段间最多两个缺口。q16 送答证据补齐，但实际回答仍漏资源变量；q06 补第 14 页第 76 段，实际回答覆盖此前遗漏的入口核验、token 化和排队。
+- 完整后端测试 139 passed、2 条既有依赖弃用警告；最终代码 25 题离线充分度 22 supported / 3 insufficient，6/6 fixture 匹配、CUDA 无回退。跨章及同页无关片段反例已纳入回归。25 题尚未按金标准重新完整人工判分；单题改善不代表阶段 A 达标。
+- 本轮代码仍在工作区；8765 后端已重启并通过健康检查与 q06 真实接口复测，验收临时会话已删除。索引无需重建，前端无需构建。
+
+## 2026-09-29：六题定点证据与生成修复
+
+- [逐题断点、改动与验证](evaluations/2026-09-29-targeted-evidence-and-generation.md)：q05 第 40 页复用条件、q09 第 3 页测量校正、q10 逐 token KV 与固定状态例外、q12 旧 KV 与趋势条件、q17 第 8 章章末判据已从相应失败层补入实际回答；q16 从章内正文补资源变量映射，并加来源条件下的生成核对。没有增加检索引擎或重建索引。
+- 最终完整后端测试 147 passed、2 条既有弃用警告。原 PDF 的 25 题离线判定保持 22 supported / 3 insufficient，6/6 fixture 匹配、CUDA 重排无回退；q23–q25 无送答引用。六道目标题的真实生成按核心事实定点复核，不能由此更新 25 题整体人工得分。
+- 本轮产品代码和文档仍在工作区。后端 8765 在最终代码微调后于 10:29（北京时间）重新启动，健康接口返回 `ok / Chroma / 0.1.0`；重启前实际接口 q09 包含第 3 页依据及测量校正，临时会话已删除。无需前端构建或重建索引。独立资料盲测、完整人工评分、前端真实使用与 partial／历史一致性仍待完成，阶段 A 未退出。
+
+## 2026-09-29：25 题重新全题人工评分
+
+- [全题报告](evaluations/2026-09-29-ai-infra-full-manual-review.md)及[逐题判分](evaluations/ai-infra-v2-manual-review-20260929.json)按 v2 金标准严格复核一次完整生成。原始私有报告为忽略目录的 `test-results/ai-infra-v2-answer-full-review-20260929.json`，隔离快照、25/25 `done`、22 supported / 3 insufficient、6/6 fixture 匹配、25/25 CUDA 重排无回退；引用编号均能映射到实际送答证据。
+- 22 道可回答题中，候选/重排选中/章节扩展后/最终送答完整分别 19/18/21/19，最终回答核心完整 15；q04/q07/q14/q15/q18/q21/q22 未完整。q23/q24 正确澄清、q25 未编造。此前 9 月 25 日严格复核为送答 14、回答 12，运行配置和生成输出均有变化，不能把净增量归给单一修复。
+- q14/q15 是必要片段已选中却被判定过滤；q22 是候选缺重算证据；q04/q07/q18/q21 是证据已送答但生成漏事实或范围限定。六道定点题 q05/q09/q10/q12/q16/q17 在这次运行答全。q07 存在书中常驻路径被说成普遍要求的范围风险。
+- 本次只做评测与文档，不改产品代码、运行服务或索引，无需重启、构建或重建索引。独立政策盲测、真人前端使用、partial 回答与历史一致性，以及诊断与最终引用对齐仍未验收；阶段 A 未退出。下一步依失败位置小范围处理并复测。
+
 ## 2026-09-29：PDF 公式人工校对闭环
 
 - [实施与隔离验收记录](evaluations/2026-09-29-pdf-formula-review.md)：PDF 可疑字符提示、原页图与整页提取文本对照、公式截图和框选、确认后修订、撤销及资料重建索引已实现；原 PDF 保持不变。功能提交已快进合并至本地 `master`（`bd2a3b5`），工作区先前未提交的 RAG 改动仍保留。
 - 后端 159 passed、前端 7 passed，生产构建成功。推免细则第 9 页 CSP 公式在隔离资料库中修订后可检索，实际回答包含三段公式及第 9 页引用；页面保存与撤销后均回到 `ready`，撤销恢复原异常提示并清理截图。现有 8765 服务和用户资料库未修改；真人最终公式核对尚待用户完成。
 - 后端 8765 已于 2026-09-29 23:01（北京时间）重启，监听进程 PID 32432；健康接口返回 `ok / Chroma / 0.1.0`，新 PDF 页校对路由已注册，现有 AI-Infra-Book.pdf 第 9 页只读请求返回 519 页总数及原文哈希。前端生产构建已在 22:54 完成。现有 PDF 无需批量重建索引，提交或撤销某页时自动重建对应资料；其他公式效果仍需逐份验证，阶段 A 未完成。
+
+## 2026-09-30：校对本页点击后无可见反馈修复
+
+- 真实长文档复现：按钮点击会生成校对面板，但面板插在正文列表上方；点击第 4 页片段时，面板位于视口上方约 5200 像素，用户看不到变化。现点击后立即滚动至校对面板；同一页再次点击也会定位。
+- 新增回归测试覆盖首次点击和重复点击。前端 8 项测试通过，生产构建通过。已在当前 8765 服务的 AI-Infra-Book.pdf 详情页验证：点击第 4 页片段后，面板顶部位于视口内 24 像素处。仅前端改动，生产静态文件已重新构建；现有浏览器标签需刷新。无需后端重启或索引重建。推免细则第 9 页真人校对仍待用户进行。
+
+## 2026-09-30：PDF Worker 模块 MIME 修复
+
+- 用户打开校对面板后遇到浏览器拒绝执行模块脚本。当前 8765 实测普通 `.js` 返回 `text/javascript`，但 PDF.js Worker 的 `.mjs` 返回 `text/plain`；后端原 MIME 覆盖只处理 `.js` 和 `.css`。
+- 后端为 `.mjs` 明确设置 `text/javascript`，并加入模拟错误系统映射的回归测试；PDF Worker 请求增加缓存版本，避免浏览器继续使用此前缓存的错误 MIME 响应。测试先红后绿：后端 API 10/10、前端 8/8，生产构建通过。
+- 8765 服务已重启，健康接口返回 `ok / Chroma / 0.1.0`，Worker 实际响应为 `text/javascript`。刷新后的真实页面中，AI-Infra-Book.pdf 第 1 页校对画布渲染为 655×927，无预览错误或浏览器脚本错误。现有标签需刷新；无需重建索引或修改用户资料。推免细则第 9 页公式仍待用户亲自校对。
+
+## 2026-09-30：四份现有 PDF 的解析器隔离评测
+
+- 按用户要求，只在本地 `test-results/parser-benchmark-2026-09-30/` 运行 pypdf 6.19.0、Docling 2.131.0、Marker 2.0.0 fast/无 OCR、PyMuPDF4LLM 1.28.2。四份 PDF 共 13 个选定页，重点复核英文论文 p3/p5、AI-Infra-Book p24、推免细则 p9；保留每个工具的原始结构、统一 block 输出、ParseIssue、耗时/内存/缓存和固定检索结果。`REPORT.md`、`manifest.json`、`queries.json`、`evidence_review.json` 可复核范围与人工判据；目录被现有 ignore 规则忽略。
+- 相同 400/60 chunking、本地 bge-small-zh-v1.5 向量和余弦排序下，九题的目标页 Recall@5 为 pypdf 9/9、Docling 9/9、Marker 7/9、PyMuPDF4LLM 9/9；人工核查“可回答证据进入 Top-5”仅分别为 4/9、3/9、2/9、3/9。Docling/PyMuPDF4LLM 标准配置在重点页公式块为空；Marker fast 在书 p24 空页；Docling 公式增强虽在书 p24 生成正确分式，却在细则 p9 生成幻觉内容。暂无生产迁移证据，保留现状，不启用自动 fallback。
+- 验证命令包括 `normalize.py`、`retrieval.py --parser {pypdf,docling,marker_fast,pymupdf4llm}` 与 `score_evidence.py`；资源测量为隔离子进程 `measure.py`，PyMuPDF4LLM 已顺序重测。未修改生产解析器、用户资料、服务或索引；无需构建、重启、重建索引。后续需扩展公式真值、完整 Marker 模式与结构感知 chunking 的隔离试验，并以证据 Top-K 和错误答案核查作为迁移门槛；不能把九题结果推广到整个知识库。
+
+## 2026-10-01：中文 Structure-aware Chunking B/C 隔离评测
+
+- [固定中文题集](evaluations/structure-chunking-zh-v1.json)、`benchmarks/structure_chunking/` 与本地忽略目录 `test-results/structure-chunking-zh-2026-10-01-v2/` 已建立；保存 535 页有效文本与 Block 源位置、四组 chunk、独立 Chroma 索引、完整 Top-50、原始与人工审阅后指标。英文历史论文不进入本轮语料或评分。推免细则第 9 页的现有人工校对以相同版本应用于 B/C。
+- B 的 AI 2287 + 推免 32 个 chunk 与当前 SQLite 文本、页码及顺序逐条完全一致。13 道可回答中文题的 Evidence@5：B 7/13，C256 6/13，C384 6/13，C512 7/13；MRR：0.3853、0.3322、0.3615、0.4292。公式题的 pypdf 分式关系损坏，四组均按 `PARSING_FAILURE` 计，不把字形命中算作可回答证据。
+- C512 改善 MHA 与竞赛最高分条款等题，但预填充/解码由 rank 29 跌出 Top-50，MQA 变量关系由 rank 1 退到 25；Top-5 未净增。当前证据**不支持生产迁移**。下步补独立中文论文/规范文件与人工金标准，并诊断这两类退化；不启动 Hybrid/Reranker 或 parser 替换。
+- 验证：`python -m pytest benchmarks/structure_chunking/test_core.py -q` 为 7 passed；正式 `python benchmarks/structure_chunking/run.py` 与 `rescore.py` 完成，报告在本地 `report.md`。未改生产 ingestion、索引或服务，无需构建、重启、重建索引。未进行生成回答或真人 UI 验证；阶段 A 仍未完成。
+
+## 2026-10-01：中文 B/C 逐题诊断及冻结 B 的 Hybrid Retrieval 隔离评测
+
+- 用户在上述 B/C 结果后明确要求先做退化诊断，再用冻结 B chunks 测 Dense/BM25/RRF；先前“不启动 Hybrid”是当时的下一步安排，已由最新指示取代。[Phase A 报告](../test-results/chunk-diagnosis-zh-2026-10-01/phase-a-report.md)与 `cases.md`/`cases.json` 保存 7 题的完整原文、页内跨度、token 数、Block ID 和逐题归因。C512 的预填充/解码 29→>50、MQA 1→25；MHA 5→1、GQA/MQA >50→19。C256 还将 MQA 共享事实切到相邻 chunk。诊断发现 C 超长 Block 分割丢独立分号；这属于 benchmark 实现缺陷，冻结结果未被暗中改写，后续 C 改良实验须先修复并重测。
+- [Phase B 报告](../test-results/hybrid-retrieval-zh-2026-10-01/report.md)及本地 `metrics.json`、`query-results.jsonl`、`manifest.json`、`bm25-index.json.gz` 固定 2319 个中文 B chunks、相同 14 题与 gold、同一 dense Top-50；13 道可回答题的 Evidence@1/3/5/10/20/50 和 MRR 已逐项保存。Dense/BM25/RRF50 的 Evidence@5 为 7/13、10/13、11/13，MRR 为 0.3853、0.6528、0.5715。RRF50 相对 Dense 救回 4 道 Top-5 题、无 Top-5 出局；模型上下文与 MQA 独立性从 rank 1 降至 rank 2；独立新增的 Top-50 完整证据仅 GQA/MQA 比较 1 题。两道政策条款改善共用同一源 chunk，公式解析失败 1 题在所有组保持 `PARSING_FAILURE`。未运行回答生成，不能推断回答准确率。
+- BM25 建索引 0.95 秒、压缩文件 1.42 MiB、Python allocation 峰值 52.6 MiB（非系统 RSS），查询平均 5.44 ms；与上轮 Dense 延迟不在同次运行，不能当成端到端对比。生产检索已具备简单词法候选与 RRF，因此这次相对 dense-only 的改进不是相对完整生产链路的增量证明。当前**不迁移** chunker、parser 或检索器；下一步增加独立中文资料与真实问题，并直接对比 BM25 与现有词法/RRF 的收益和退化。英文资料不参与当前指标。
+- 验证：`.venv/Scripts/python.exe -m pytest benchmarks/structure_chunking/test_core.py benchmarks/structure_chunking/test_diagnose.py benchmarks/hybrid_retrieval/test_hybrid_core.py -q` 为 14 passed；`.venv/Scripts/python.exe -m pytest backend/tests -q --tb=short` 为 159 passed、2 条依赖弃用警告；输入/代码哈希、14 题及每组 50 条检索候选已核对。最初用系统 Python 运行后端测试因环境依赖冲突失败，改用项目 `.venv` 后通过。本轮只新增 benchmark 文件、文档及 ignored 实验产物，未改生产代码、用户索引或服务；无需构建、重启或重建索引。阶段 A 未因此完成。
+
+## 2026-10-01：生产检索消融与 BM25 词法替换隔离评测
+
+- [完整报告](../test-results/production-retrieval-ablation-2026-10-01-v2/report.md)和 `benchmarks/production_retrieval/` 复现实际 `Engine.retrieve` + CUDA reranker + 选证 + context expansion + `assess_evidence`，并做 P1–P5、现有/中文 ngram 两种 BM25、按页去重 L0/L1 对照。只读生产与隔离副本的 2319 个 B chunk/向量一致，14 道中文查询的 substring SQL Top-100 一致；原始轨迹、资源、逐题依据和验证文件均在本机忽略目录。英文资料没有进入本轮；公式解析失败题单列，不计入 13 道可回答题的分母。
+- 13 题 P0 融合候选/重排后/已选/最终送答 Evidence@5 为 **7/11/11/10**，最终 MRR **0.6154**；中文 ngram BM25 的候选/已选/最终送答为 **11/12/11**，最终 MRR **0.5962**；现有 substring 只取消 `location` 去重也得最终 **11/13、0.5962**。BM25 仅新增 GQA/MQA 一题的最终 Top-5，关键 AI Infra 定义由 rank 1 退至 2；当前 tokenizer 版还让预填充/解码证据丢失。生产词法较 dense only 最终增加预填充/解码一题。绩点题证据在重排 rank 8、选取限额 6 被挡住；团队扣分已选 rank 1，却被 `assess_evidence` 清空。历史人工章节题 q18 单独探测到 5 条扩展上下文，未纳入主分数，也未做生成回答。
+- **不迁移 BM25、chunker、parser 或重排配置。** BM25 最终 @5 只多 1/13，MRR 下降，且去重对照可得到相同 Top-5；只有两份独立中文 PDF，尚缺新的人工核验资料。下一步补中文技术文档/论文/第二份规范/表格资料，再分别验证去重、证据选取和判定误拒。复验为 benchmark 相关测试 19 passed、后端 159 passed（2 条依赖弃用警告）、14 题/2319 chunk/SQL/P0/P3/P4/excerpt 审计通过、`git diff --check` 无错误。当前仅为真实资料隔离检索验证，未生成回答、未进行用户使用验证；阶段 A 未退出。本轮未改生产代码、数据、索引或服务，无需构建、重启、重建索引。
+
+## 2026-10-01：Evidence Selection & Sufficiency 隔离评测
+
+- [完整报告](../test-results/evidence-pipeline-2026-10-01-v1/report.md)、`benchmarks/evidence_pipeline/` 与本机 ignored 原始轨迹在冻结 P0/同一 CUDA 排名上比较 S6/S8/S10、A0/A1，并在当前 SQL Top-100 上比较每 location 最多保留 1/2/3 条的 D1/D2/D3。14 题、2319 个中文 B chunk、生产代码和设置哈希一致；S6 与 P0 各层/判定逐题一致，D1 词法与 P0 逐条一致。英文历史资料没有进入主语料；公式解析失败题仍单列。
+- 13 道可回答题的 S6/S8/S10 最终 Evidence@5/MRR 均为 **10/13、0.6154**。S8/S10 把绩点原文选至 rank 8，但判定仍为 insufficient；selected token 均值 1653→2201→2754，最终 gold coverage 没有提升。团队扣分题的已选 rank 1 完整证据被通用 `_supports` 的字面术语规则误拒；绩点题是结构化指标短语与原文不连续匹配。S6-A1 绕过过滤的完整证据为 11/13、MRR 0.6923，但 A0 在 5 题减少无关片段，未评估生成正确性，不能直接去掉过滤。
+- D2 救回 GQA/MQA 最终 rank 4，最终 Evidence@5 **11/13**、MRR **0.5962**，AI Infra 定义题 1→2；D3 同指标、无新增 gold，但平均候选 unique pages 继续减少。P0 3 道最终失败题分别是 `LOCATION_DEDUP_DROP`、`SELECTION_CUTOFF`、`EVIDENCE_FILTER_DROP`，各 1；S8 后绩点题由选取截断转为过滤误拒。复验：14 题/2319 chunk/S6-P0/D1-D3 及逐层评分审计通过，benchmark 相关测试 **24 passed**、后端 **159 passed**（2 条现有依赖弃用警告）、`git diff --check` 无错误。当前**不修改生产**。后续优先隔离验证短语/指标误拒的最小修正，再补经人工核验的中文资料并复测 D2。没有生成回答或真人使用验证；阶段 A 未退出。本轮仅新增 benchmark 与文档、ignored 结果，无构建、重启或重建索引要求。
+
+## 2026-10-03：Evidence Matching Robustness 隔离评测
+
+- [完整报告](../test-results/evidence-matching-2026-10-03-v2/report.md)、`benchmarks/evidence_matching/`、`dataset.json`、`e0-baseline.json`、`results.json` 与 `stress.json` 冻结中文证据匹配对照；31 条主集含 11 支持、14 不支持、6 部分支持。标签由 agent 暂标，用户将稍后审阅；5 条原标 holdout 已进入开发测试，不能作为独立泛化证据。
+- E0 Support Recall 6/11、Precision 6/12、负例误放行 6/14、partial 1/6；E1/E2/E3 完整支持依次 7/11、8/11、11/11，但 E3 负例误放行升至 8/14。E4 在同批开发集 31/31；冻结后新增 5 条压力样本暴露 4 条标签误判、1 条表格列序改变后错取值，不能据开发集满分迁移。
+- 冻结 S6/D1 selected 回放的最终 Evidence@5 **10/13→11/13**、MRR **0.615→0.769**，救回 `policy-team`；仅作上限诊断的 S8 为 **10/13→12/13**、MRR **0.615→0.808**，救回 `policy-gpa`。13 题中原 10 道成功题按 gold fact/rank 无退化，但少量答案上下文增多，尚未检验生成答案。`ai-q20` 仍因 selected 缺正确片段无法救回；公式解析失败题不计分。
+- 当前结论：**不修改生产判定、不增加 evidence limit、不改检索或索引**。先复核标签，补独立中文政策/技术/论文反例，重点约束否定、失效条款、范围和表格列绑定；再做 rule refinement 的独立验证，必要时才研究 rule-first NLI fallback。benchmark 5 项与生产证据/QueryPlan 51 项测试通过；未触及运行服务，无构建、重启或重建索引要求，阶段 A 未完成。
+
+## 2026-10-03：Evidence Benchmark Annotation v2 草案与历史重算
+
+- [v2 schema](evaluations/evidence-annotation-v2-schema.md)、[逐题报告](../test-results/evidence-matching-v2-2026-10-03/report.md)及 `benchmarks/evidence_annotation_v2/` 将旧五份输入按 SHA-256 冻结，新建 `dataset-v2.json`、`rescore-v2.json`、`verification.json`。没有覆盖 v1 或修改 E4 matcher。36 条（原主集 31 + stress 5）全部归 DEV/diagnostic，没有 `TEST_FROZEN`；标注由 agent 根据用户提出的新语义暂拟，`human_review_state=PENDING`，不能称为已完成独立人工复核。
+- v2 区分证据能否回答（FULL/PARTIAL/NONE）、问句命题关系、与已核原文冲突风险，以及 required/covered/missing facts。主集 6/31 条改变三分类标签；4 条与已核原文冲突的受控来源移出普通充分度主指标。旧 E4 的 v1 31/31 在 v2 口径下为 **25/31**；普通 DEV 主指标 **25/27**，stress **2/5**，全部 DEV **27/36**。`table-column-order` 虽仍判 FULL，但输出 0.06，与正确的第二等次 0.05 不符；值级核验单列失败。
+- v1 判定输出不普遍包含逐事实值、范围与极性，不能从三分类诚实推导全量 fact recall/precision；报告只审计显式 `matched/constraints` 的可观察数字和关系。当前**不迁移生产**、不继续修改 E4、不加 E5；下一步由用户复核 v2 gold，再从独立中文资料先标 gold/冻结，建立真正的 `TEST_FROZEN`。v2 + 旧 benchmark + 后端完整回归最终 **171 passed**、2 条既有弃用警告；此前一次完整运行有 1 项 Windows Chroma 快照文件占用失败，单测及完整复跑通过。未改生产索引、服务或用户资料，无构建、重启、重建索引要求；阶段 A 未退出。
+
+## 2026-10-03：v2 复核包与独立中文 TEST 候选资料
+
+- [v2 字段合同](evaluations/evidence-annotation-v2-schema.md)和 [TEST_FROZEN 协议](evaluations/evidence-test-frozen-protocol.md)明确 answerability 与命题/来源关系分离、事实槽位、来源定位、人工签核与测试失效规则。`benchmarks/evidence_annotation_v2/review_freeze.py` 从已有只读 v2 草案生成 [36 条逐案复核表](../test-results/evidence-annotation-freeze-2026-10-03/review-sheet.md)、JSON 与 SHA manifest；27 PRIMARY_DEV、9 DIAGNOSTIC_DEV 全部 `NEEDS_HUMAN_REVIEW`，用户尚未签核。
+- [独立资料 intake](../test-results/test-frozen-intake-2026-10-03/intake-report.md)收集第二份中文推免细则、云密码技术白皮书、CCL 中文论文和表格密集的高校收费 PDF。四份新 PDF 的 SHA 与仓库现存四份均不同；现有 `parse_file` + 400/60 只读抽取为 9+87+11+4 页、311 chunk。另有加密 PDF、`/Gxx` 乱码与表头顺序错乱候选被排除；21 道 agent 暂拟查询和 6 个真实 chunk 负例候选待人工核定。
+- **当前 TEST_FROZEN 仍为 0，未运行新资料 E0/E4，也无独立性能数字。** 待 36 条旧 DEV 与全部新 gold 经真人签核、逐题 PDF/parser 校验、hash 冻结后再首次运行。未改 E4/生产判定、索引或服务；无需构建、重启、重建索引。阶段 A 未因此完成。
+
+## 2026-10-03：旧 DEV 人审冻结与独立 TEST 逐题审阅包
+
+- 用户最新附件明确复核旧 36 条 v2 DEV：27 条保持现有标注，六条 GPA 题修正 required scope，`csp-no-output` 改成明确询问具体值，`gqa-mqa-swapped` 回答只据片段，`negated-definition` 消除句法歧义。新建只读 [DEV 冻结集](../test-results/evidence-annotation-freeze-2026-10-03/dataset-v2-dev-frozen.json)和 [SHA manifest](../test-results/evidence-annotation-freeze-2026-10-03/dev-freeze-manifest.json)，记录 27 `CONFIRMED`、9 `RELABELLED`、schema v2.0、复核日期及用户附件 SHA；原 v2 草案未覆盖。
+- 四份新中文 PDF 的 21 题已逐题对照 12 张相关原页图、pypdf 页文本和现有 400/60 chunk，形成 [TEST 候选审阅表](../test-results/test-frozen-intake-2026-10-03/test-candidate-review-v4/review-sheet.md)、逐题结构化事实、原始 chunk 与页文本、21 个真实同文档 hard-negative pair（原 6 + 新 15）。P05/T02/T03/T04 改写以收窄问法；P06 的日期边界原文明确，保留；P04 在 `policy:8` 已含两项基本事实，不能当成严格跨 chunk 依赖证明。现有 21 题 parser 状态暂标 PASS，仍待真人逐题确认；若发现解析错列/丢事实，须先列入 parsing diagnostic。
+- **TEST_FROZEN=0。** 新 TEST 的 query、gold、parser correctness、正负例与答案尚未得到人工签核，E0/E4 未在新资料运行，不能给独立泛化分数或迁移建议。下一步请用户复核审阅表；全部签核且版本/hash 冻结后，才一次性运行 E0 vs E4。benchmark 定向新增测试通过；未改生产代码、用户索引或服务，无需构建、重启、重建索引。阶段 A 未退出。
+
+## 2026-10-03：TEST_FROZEN v1 人审签核与 E0/E4 首次盲测
+
+- 用户逐题确认 17 题、修订 T03/A04/F03/F04 共 4 题、排除 0 题；机械检查复核 query、required facts、正负例、标签和 parser 状态。21 题均 parser PASS；F03 标为跨 chunk 诊断，不计 20 题单 chunk 主指标。签核来源、四份 PDF、chunk corpus、[最终 TEST JSON 与 SHA manifest](../test-results/evidence-test-frozen-2026-10-03-v1/test-frozen-v1-manifest.json)、E0/E4 文件哈希及[最终审阅表](../test-results/evidence-test-frozen-2026-10-03-v1/final-review-sheet.md)已冻结。TEST JSON SHA-256 为 `c81ad45cb79a518b4ebb5183952cd4a7e7e5a17b2a37bc56dfb62cee07f0a9d0`。
+- 在该冻结输入上只运行一次 [E0 vs E4 盲测](../test-results/evidence-test-blind-2026-10-03-v1/report.md)。40 个主指标 pair 两者完全相同：accuracy **20/40**、macro F1 **0.351**；FULL recall **10/20**、PARTIAL **0/3**、NONE **10/17**。NONE→FULL 6、NONE→PARTIAL 1、PARTIAL→FULL 1、FULL→NONE 10、PARTIAL→NONE 2；收费表格 4 个正例全部误拒。F03 跨 chunk 诊断为 1/2：合并正例正确，单 chunk 部分证据误放行。
+- [逐 pair 失败分析](../test-results/evidence-test-blind-2026-10-03-v1/failure-analysis.md)记录关系绑定、表格行列绑定、部分支持、范围、顺序和条件边界等表现；E4 42 个 pair 全部走 `NORMALIZED_PRODUCTION_ASSESSMENT`，无可观察新增规则收益。matcher 未显式输出表格值、数值范围或极性，值级准确率为 `NOT_OBSERVABLE`。此为给定证据的 matcher 试验，未测检索/生成或用户使用。**不迁移 E4**，也不据本 TEST 修改 matcher、gold 或建立 E5；继续研究需在 DEV 中处理并另建独立 TEST。
+- 本轮新增/修改仅 `benchmarks/evidence_annotation_v2/`、评测文档与本地 ignored 结果；生产 parser、chunker、matcher、embedding、用户索引和服务未因本实验改动。无需构建、重启或重建索引；阶段 A 未退出。
+
+## 2026-10-04：E4 方向收尾、硬否决生成对照与实验总报告
+
+- [固定证据生成对照](../test-results/evidence-gate-ablation-2026-10-04-v1/report.md)在 TEST_FROZEN v1 的 21 题、42 个正负 evidence unit 上比较 E0 式 `hard_veto` 与只作可错提示的 `advisory`。完整原文、query、DeepSeek Flash 和基本来源约束相同；未把 gold 放入模型。20 道单 chunk 题 40 pair 的 agent 严格答案评分为 **26/40 vs 40/40**；FULL **9/20 vs 20/20**、PARTIAL **1/3 vs 3/3**、NONE **16/17 vs 17/17**。硬门槛直接误拒 10 个 FULL 和 2 个 PARTIAL；P06 输出自相矛盾，P01 负例带错范围附带断言。F03 跨 chunk 诊断为 1/2 vs 2/2，硬门槛路径将 99000 元错归非全日制 MBA。两项 advisory 答案评分为中等把握，保守扣除仍为 38/40。两组模型调用分别 20/42 次，记录模型调用耗时合计 19.507/38.012 秒；无服务端 token usage。
+- 输出与评分见 `responses.jsonl`、`review-annotations.json`、`metrics.json` 和 SHA manifests。**诊断而非独立迁移验收**：同一 TEST v1 已被观察，评分由 agent 完成，每路径单次采样，仅固定 evidence unit，无真实混合检索或空证据。结论是结束 E4 规则优化；生产硬否决的降权／取消值得在新独立中文资料中验证，当前不改生产 `assess_evidence()`、索引或服务。
+- 根据用户确认的大纲完成[内部技术决策版实验总报告](evaluations/2026-10-04-rag-experiments-decision-report.md)，覆盖基础问答、政策回归、PDF/parser/公式、结构切分、Hybrid 与生产消融、选证、matcher、冻结 TEST 和硬否决诊断。报告逐节区分分母、DEV/TEST、候选／送答／答案与实际用户验收。benchmarks 相关测试 **24 passed**；评分重算、39 个报告链接、冻结 TEST/E0/E4 哈希及 `git diff --check` 已核对。本轮无生产构建、重启或重建索引要求，阶段 A 未退出。

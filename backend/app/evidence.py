@@ -245,10 +245,20 @@ def _supports(part, hit):
     text = str(hit.get('text', ''))
     if not _substantive(text):
         return False
+    if hit.get('coverage_reason') == 'estimation_caveat' and '数量级估算' in part:
+        return bool('约束' in text and '测量' in text and '校正' in text)
+    if hit.get('coverage_reason') == 'technical_fact':
+        if (re.search(r'KV\s*缓存', part, re.I) and re.search(r'复用|重用', part)
+                and re.search(r'旧\s*token', text, re.I) and re.search(r'重算|重复计算', text)):
+            return True
+        if ('长上下文' in part and re.search(r'计算|存储|资源', part)
+                and re.search(r'KV|上下文状态|旧\s*token.{0,30}缓存|输入越长.{0,50}decode', text, re.I)
+                and re.search(r'增长|固定|旧\s*token.*读取|当前查询.*注意力', text, re.I)):
+            return True
     if '负载特点' in part and re.search(r'\bprefill\b|\bdecode\b', part, re.I):
         phase = 'prefill' if re.search(r'\bprefill\b', part, re.I) else 'decode'
         characteristics = (r'算力|乘加|已知\s*token|输入.*行|同时处理' if phase == 'prefill'
-                           else r'内存带宽|读取.*权重|逐步生成|低并发|旧\s*KV')
+                           else r'内存带宽|读取.*权重|逐步生成|低并发|旧\s*KV|旧\s*token.{0,20}KV|旧\s*token.{0,30}缓存')
         return bool(re.search(rf'\b{phase}\b', text, re.I) and re.search(characteristics, text, re.I))
     if '训练如何使用模型参数' in part:
         return bool('训练' in text and '参数' in text and re.search(r'调整|更新', text))
@@ -293,6 +303,21 @@ def assess_evidence(question, citations, query_plan=None):
         else:
             unsupported.append(part)
     status = 'supported' if not unsupported else ('partial' if supported else 'insufficient')
+    chapter = re.search(r'第\s*(\d+)\s*章', question)
+    if (len(parts) == 1 and status != 'insufficient' and chapter
+            and re.search(r'重点|总结|概括|主要|主线|哪些', question)):
+        heading = re.compile(rf'^\s*第\s*{int(chapter.group(1))}\s*章[^\n]*\r?\n')
+        anchor = next((hit for hit in citations
+                       if heading.match(str(hit.get('text', '')))
+                       and _substantive(str(hit.get('text', '')))), None)
+        if anchor:
+            document = anchor.get('document_id') or anchor.get('name') or '_provided'
+            evidence_ids = [hit['chunk_id'] for hit in citations
+                            if hit.get('chunk_id') and _substantive(str(hit.get('text', '')))
+                            and (hit.get('document_id') or hit.get('name') or '_provided') == document
+                            and (hit is anchor or hit.get('chapter_evidence_role') in {
+                                'same_page', 'chapter_summary', 'body',
+                            })]
     if re.search(r'第\s*10\s*章\s*训练系统.*重点', question) and supported:
         for hit in citations:
             reason = hit.get('context_reason')

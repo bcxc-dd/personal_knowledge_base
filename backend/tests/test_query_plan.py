@@ -1,6 +1,20 @@
 from app.query_plan import build_query_plan
 
 
+def test_technical_questions_add_one_focused_vector_query_without_changing_original():
+    examples = [
+        ('为什么生成时复用 KV 缓存？', ('旧 token', '重算')),
+        ('为什么先做数量级估算？', ('遗漏', '测量')),
+        ('长上下文怎样改变计算和存储需求？', ('KV', '固定状态')),
+    ]
+    for question, expected_terms in examples:
+        plan = build_query_plan(question)
+        assert plan.vector_queries[0] == question
+        assert len(plan.vector_queries) == 2
+        assert all(term in plan.vector_queries[1] for term in expected_terms)
+    assert build_query_plan('长上下文是什么意思？').vector_queries == ('长上下文是什么意思？',)
+
+
 def test_requirement_question_keeps_original_and_extracts_independent_terms():
     question = '推免是否有绩点要求  '
 

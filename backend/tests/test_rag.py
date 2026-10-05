@@ -411,6 +411,165 @@ def test_chapter_overview_expands_selected_intro_to_continuation_and_own_summary
     assert all(item['retrieval_sources'] == ['context'] for item in result.diagnostics['context_items'])
 
 
+def test_chapter_overview_marks_selected_own_summary_without_relabelling_its_retrieval_source(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('book.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    chunks = [
+        ('第 32 页', '第 2 章 模型架构\n本章从计算图推导存储容量、运算量和读写量，不能仅凭参数量估算资源。' * 2),
+        ('第 32 页', '哪些权重能共享、哪些状态需长期保存、哪些结果只需暂存，决定后续资源分配。'),
+        ('第 82 页', '本章小结\n矩阵尺寸决定权重容量，batch 和上下文长度改变运算与状态读写量。'),
+        ('第 83 页', '第 3 章 推理负载\n下一章开始。'),
+        ('第 99 页', '本章小结\n下一章的结论不属于模型架构。'),
+    ]
+    engine.store.replace_chunks(doc['id'], [
+        {'ordinal': index, 'location': location, 'text': body}
+        for index, (location, body) in enumerate(chunks)
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 2})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': f'{doc["id"]}:{ordinal}', 'document_id': doc['id'], 'name': 'book.txt',
+         'location': chunks[ordinal][0], 'text': chunks[ordinal][1], 'distance': 0.01 + ordinal * 0.001}
+        for ordinal in (0, 2)
+    ]
+
+    result = engine.retrieve('第 2 章模型架构主要要解决什么资源问题？', 'default', [])
+
+    assert [item['chunk_id'] for item in result] == [f'{doc["id"]}:{i}' for i in (0, 2, 1)]
+    assert result[1]['chapter_evidence_role'] == 'chapter_summary'
+    assert result[1]['retrieval_sources'] != ['context']
+    assert result[2]['chapter_evidence_role'] == 'same_page'
+    assert all(item['chunk_id'] != f'{doc["id"]}:4' for item in result)
+
+
+def test_chapter_mainline_question_includes_own_summary_and_stops_at_next_chapter(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('book.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    chunks = [
+        ('第 318 页', '第 8 章 推理优化\n本章组织请求、批处理、KV 管理和推测解码，在给定时间内返回更多正确答案。' * 2),
+        ('第 318 页', '本章还会比较各方法的额外开销。'),
+        ('第 354 页', '本章小结\n先检查内存是否足够，再判断能否按期完成，最后比较每个合格结果的 GPU 时间。'),
+        ('第 355 页', '第 9 章 分布式推理\n下一章研究计算和状态的放置。'),
+        ('第 360 页', '本章小结\n这一段属于第 9 章。'),
+    ]
+    engine.store.replace_chunks(doc['id'], [
+        {'ordinal': index, 'location': location, 'text': body}
+        for index, (location, body) in enumerate(chunks)
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 1})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: []
+    engine.vectors.search = lambda *args, **kwargs: [{
+        'chunk_id': f'{doc["id"]}:0', 'document_id': doc['id'], 'name': 'book.txt',
+        'location': chunks[0][0], 'text': chunks[0][1], 'distance': 0.01,
+    }]
+
+    result = engine.retrieve('第 8 章推理优化的主线是什么？', 'default', [])
+
+    assert [item['chunk_id'] for item in result] == [f'{doc["id"]}:{i}' for i in (0, 1, 2)]
+    assert all(item['chunk_id'] not in {f'{doc["id"]}:3', f'{doc["id"]}:4'} for item in result)
+
+
+def test_chapter_resource_question_adds_bounded_body_facts_for_named_factors(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('book.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    chunks = [
+        ('第 32 页', '第 2 章 模型架构\n从计算图推导存储容量、运算量和读写量，分析共享权重、长期状态和临时数据。' * 2),
+        ('第 40 页', '全注意力的运算量随上下文长度增长，比逐 token 投影增长更快。'),
+        ('第 41 页', '每个上下文 token 要保存 KV；batch 增加时，每条独立请求各增加一份上下文状态。'),
+        ('第 45 页', '将 KV 组数减半，KV 投影参数和状态容量减半，查询与上下文交互仍按查询头数累计。'),
+        ('第 57 页', '专家总数决定参数集合；选中专家数和尺寸决定单 token 运算，batch 分派影响读取的专家权重。'),
+        ('第 82 页', '本章小结\nbatch、上下文、KV 组织和专家激活改变不同资源项。'),
+        ('第 83 页', '第 3 章 推理负载\n下一章讨论其他资源。'),
+    ]
+    engine.store.replace_chunks(doc['id'], [
+        {'ordinal': index, 'location': location, 'text': body}
+        for index, (location, body) in enumerate(chunks)
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 1})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: []
+    engine.vectors.search = lambda *args, **kwargs: [{
+        'chunk_id': f'{doc["id"]}:0', 'document_id': doc['id'], 'name': 'book.txt',
+        'location': chunks[0][0], 'text': chunks[0][1], 'distance': 0.01,
+    }]
+
+    result = engine.retrieve('第 2 章模型架构主要要解决什么资源问题？', 'default', [])
+
+    assert {item['chunk_id'] for item in result} == {f'{doc["id"]}:{i}' for i in range(6)}
+    assert all(item['chunk_id'] != f'{doc["id"]}:6' for item in result)
+
+
+def test_technical_coverage_selects_relevant_candidates_beyond_default_limit():
+    from app.engine import select_evidence_items
+    def hit(key, body):
+        return {'chunk_id': key, 'document_id': 'doc', 'text': body}
+
+    filler = [hit(f'f{i}', '泛泛介绍缓存和系统架构。') for i in range(6)]
+    reuse = hit('reuse', '旧 token 的 K、V 在权重、位置不变时复用，避免重算；当前查询的注意力仍需计算。')
+    unrelated = hit('other', '另一章谈 KV 在网络之间传输。')
+    selected = select_evidence_items('为什么生成时复用 KV 缓存？', [*filler, unrelated, reuse], 6)
+    assert [item['chunk_id'] for item in selected] == [*(f'f{i}' for i in range(6)), 'reuse']
+
+    selected = select_evidence_items('长上下文怎样改变计算和存储需求？', [
+        *filler,
+        hit('growth', '全局 KV 随上下文增长，每个新 token 都要读取旧 KV；递推状态大小固定。'),
+        hit('calculation', 'decode 只处理新 token，旧 token 的 KV 从缓存读取，当前查询的注意力仍要执行。'),
+        unrelated,
+    ], 6)
+    assert [item['chunk_id'] for item in selected[6:]] == ['growth', 'calculation']
+    math_notation = hit('math_kv', 'decode 只处理新 token，旧 token 的 𝐾、𝑉 从缓存读取，当前查询的注意力仍要执行。')
+    assert select_evidence_items('长上下文怎样改变计算和存储需求？', [*filler, math_notation], 6)[-1] == math_notation
+    first_decode = hit('first_decode', '输入越长，第一次 decode 要访问的上下文就越多，上下文交互的运算量随长度增长。')
+    assert select_evidence_items('长上下文怎样改变计算和存储需求？', [*filler, first_decode], 6)[-1] == first_decode
+
+    selected = select_evidence_items('prefill 和 decode 的负载特点有什么差异？', [
+        *filler,
+        hit('old_kv', 'prefill 同时处理多个 token，decode 只对新 token 计算，旧 token 的 KV 从缓存读取。'),
+        unrelated,
+    ], 6)
+    assert [item['chunk_id'] for item in selected[6:]] == ['old_kv']
+    assert select_evidence_items('缓存在哪里？', [*filler, reuse], 6) == filler
+
+
+def test_chapter_overview_stops_when_next_chapter_starts_inside_a_chunk(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('book.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    chunks = [
+        ('第 32 页', '第 2 章 模型架构\n本章从计算图推导存储容量、运算量和读写量，' * 3),
+        ('第 32 页', '上一章末尾。\n第 3 章 推理负载\n下一章讨论模型架构之外的请求负载和资源问题。'),
+        ('第 33 页', '本章小结\n这是第 3 章的结论。'),
+    ]
+    engine.store.replace_chunks(doc['id'], [
+        {'ordinal': index, 'location': location, 'text': body}
+        for index, (location, body) in enumerate(chunks)
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 2})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: []
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': f'{doc["id"]}:{index}', 'document_id': doc['id'], 'name': 'book.txt',
+         'location': chunks[index][0], 'text': chunks[index][1], 'distance': 0.01 + index * 0.001}
+        for index in (0, 1)
+    ]
+
+    result = engine.retrieve('第 2 章模型架构主要要解决什么资源问题？', 'default', [])
+    from app.evidence import assess_evidence
+    assessment = assess_evidence('第 2 章模型架构主要要解决什么资源问题？', result)
+
+    assert 'chapter_evidence_role' not in result[1]
+    assert result.diagnostics['context_items'] == []
+    assert assessment.evidence_chunk_ids == (f'{doc["id"]}:0',)
+
+
 def test_non_overview_query_does_not_expand_chapter_context(tmp_path):
     engine = make_engine(tmp_path)
     doc, _ = engine.upload('book.txt', b'placeholder', 'default')
@@ -430,6 +589,93 @@ def test_non_overview_query_does_not_expand_chapter_context(tmp_path):
     result = engine.retrieve('训练权重是什么？', 'default', [])
 
     assert [item['chunk_id'] for item in result] == [f'{doc["id"]}:0']
+
+
+def test_steps_question_bridges_selected_same_page_chunk_gap(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('guide.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    chunks = [
+        ('第 14 页', '一次请求的处理过程\n应用组织输入，服务入口接收请求，路由器选择执行实例。入口接收的上下文包括用户输入、历史对话和检索到的参考材料。'),
+        ('第 14 页', '入口接收的上下文包括用户输入、历史对话和检索到的参考材料。入口检查请求后，文本转换为 token；调度器把请求放入队列并组成 batch。CPU 运行时向 GPU 提交程序，GPU 执行算子并保存临时状态。'),
+        ('第 14 页', 'CPU 运行时向 GPU 提交程序，GPU 执行算子并保存临时状态。结果沿连接返回。'),
+        ('第 15 页', '另一页讨论模型的权重加载。'),
+    ]
+    engine.store.replace_chunks(doc['id'], [
+        {'ordinal': index, 'location': location, 'text': body}
+        for index, (location, body) in enumerate(chunks)
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 2})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: []
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': f'{doc["id"]}:{index}', 'document_id': doc['id'], 'name': 'guide.txt',
+         'location': chunks[index][0], 'text': chunks[index][1], 'distance': 0.01 + index * 0.001}
+        for index in (0, 2)
+    ]
+
+    result = engine.retrieve('一次请求从应用到 GPU 经历哪些步骤？', 'default', [])
+
+    assert [item['chunk_id'] for item in result] == [f'{doc["id"]}:{i}' for i in (0, 2, 1)]
+    assert result[2]['context_reason'] == 'same_page_gap'
+    assert [item['chunk_id'] for item in result.diagnostics['context_items']] == [f'{doc["id"]}:1']
+
+
+def test_steps_question_does_not_bridge_across_page_boundary(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('guide.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    chunks = [
+        ('第 14 页', '应用组织输入，路由器选择实例。'),
+        ('第 14 页', '另一个主题的补充说明。'),
+        ('第 15 页', 'CPU 向 GPU 提交程序，GPU 执行计算。'),
+    ]
+    engine.store.replace_chunks(doc['id'], [
+        {'ordinal': index, 'location': location, 'text': body}
+        for index, (location, body) in enumerate(chunks)
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 2})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: []
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': f'{doc["id"]}:{index}', 'document_id': doc['id'], 'name': 'guide.txt',
+         'location': chunks[index][0], 'text': chunks[index][1], 'distance': 0.01 + index * 0.001}
+        for index in (0, 2)
+    ]
+
+    result = engine.retrieve('一次请求从应用到 GPU 经历哪些步骤？', 'default', [])
+
+    assert [item['chunk_id'] for item in result] == [f'{doc["id"]}:0', f'{doc["id"]}:2']
+
+
+def test_steps_question_does_not_bridge_unrelated_same_page_chunk(tmp_path):
+    engine = make_engine(tmp_path)
+    doc, _ = engine.upload('guide.txt', b'placeholder', 'default')
+    from app.models import fingerprint
+    chunks = [
+        ('第 14 页', '一次 GPU 请求的流程：入口接收请求，然后路由器选择实例。'),
+        ('第 14 页', 'GPU 价格与购买预算说明，按年度计算采购金额。'),
+        ('第 14 页', '实例运行后 GPU 执行算子，最后向用户返回结果。'),
+    ]
+    engine.store.replace_chunks(doc['id'], [
+        {'ordinal': index, 'location': location, 'text': body}
+        for index, (location, body) in enumerate(chunks)
+    ])
+    engine.store.update_document(doc['id'], status='ready', fingerprint=fingerprint(engine.store.settings()))
+    engine.store.save_settings({'reranker_enabled': False, 'reranker_evidence': 2})
+    engine.models.embed = lambda *args, **kwargs: [[1, 0, 0]]
+    engine.store.search_chunks_exact = lambda *args, **kwargs: []
+    engine.vectors.search = lambda *args, **kwargs: [
+        {'chunk_id': f'{doc["id"]}:{index}', 'document_id': doc['id'], 'name': 'guide.txt',
+         'location': chunks[index][0], 'text': chunks[index][1], 'distance': 0.01 + index * 0.001}
+        for index in (0, 2)
+    ]
+
+    result = engine.retrieve('一次 GPU 请求从入口到返回经历哪些步骤？', 'default', [])
+
+    assert [item['chunk_id'] for item in result] == [f'{doc["id"]}:0', f'{doc["id"]}:2']
 
 
 def test_lexical_terms_preserve_multiword_technical_phrase():

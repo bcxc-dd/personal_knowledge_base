@@ -1,6 +1,37 @@
 from app.evidence import assess_evidence
 
 
+def test_bounded_technical_evidence_is_kept_after_selection():
+    cases = [
+        ('为什么生成时复用 KV 缓存？', '旧 token 的 K、V 在权重和位置不变时复用，避免重算；当前查询的注意力仍要计算。'),
+        ('长上下文怎样改变计算和存储需求？', '逐 token KV 随上下文增长，而递推状态大小固定。'),
+        ('prefill 和 decode 的负载特点有什么差异？', 'prefill 同时处理已知 token，decode 读取旧 token 的 KV 缓存。'),
+    ]
+    for question, fact in cases:
+        citations = [
+            {'chunk_id': 'intro', 'document_id': 'doc', 'text': question + '有多个原因，详见正文。'},
+            {'chunk_id': 'fact', 'document_id': 'doc', 'text': fact, 'coverage_reason': 'technical_fact'},
+        ]
+        result = assess_evidence(question, citations)
+        assert 'fact' in result.evidence_chunk_ids
+
+
+def test_estimation_caveat_and_chapter_mainline_summary_survive_evidence_filter():
+    estimation = assess_evidence('为什么先做数量级估算？', [
+        {'chunk_id': 'intro', 'document_id': 'doc', 'text': '先做数量级估算用于检查容量和带宽约束。'},
+        {'chunk_id': 'caveat', 'document_id': 'doc', 'coverage_reason': 'estimation_caveat',
+         'text': '先列出约束和遗漏，再用测量校正实际开销。'},
+    ])
+    assert estimation.evidence_chunk_ids == ('intro', 'caveat')
+
+    chapter = assess_evidence('第 8 章推理优化的主线是什么？', [
+        {'chunk_id': 'intro', 'document_id': 'doc', 'text': '第 8 章 推理优化\n本章研究批处理、请求调度和缓存，在期限内完成正确结果。'},
+        {'chunk_id': 'summary', 'document_id': 'doc', 'chapter_evidence_role': 'chapter_summary',
+         'text': '本章小结\n先检查内存，再检查时限，最后比较每个合格结果的 GPU 时间。'},
+    ])
+    assert chapter.evidence_chunk_ids == ('intro', 'summary')
+
+
 def test_requirement_question_accepts_the_gpa_rule_without_exact_question_wording():
     result = assess_evidence('推免是否有绩点要求  ', [{
         'chunk_id': 'promotion-page-2', 'document_id': 'promotion',
@@ -259,6 +290,22 @@ def test_chapter_overview_excludes_toc_and_sends_relevant_same_page_continuation
 
     assert result.status == 'supported'
     assert result.evidence_chunk_ids == ('intro', 'continuation', 'execution', 'recovery', 'result')
+
+
+def test_explicit_chapter_overview_keeps_verified_continuation_and_selected_summary():
+    result = assess_evidence('第 2 章模型架构主要要解决什么资源问题？', [
+        {'chunk_id': 'toc', 'document_id': 'book', 'text': '第一部分 模型与负载\n第 1 章 初识 AI Infra\n第 2 章 模型架构\n第 3 章 推理负载'},
+        {'chunk_id': 'intro', 'document_id': 'book', 'text': '第 2 章 模型架构\n本章从计算图推导存储容量、运算量和读写量，而非只看参数量。'},
+        {'chunk_id': 'continuation', 'document_id': 'book', 'chapter_evidence_role': 'same_page',
+         'text': '哪些权重能共享、哪些状态需长期保存、哪些结果只需暂存，决定存储与调度。'},
+        {'chunk_id': 'summary', 'document_id': 'book', 'chapter_evidence_role': 'chapter_summary',
+         'text': '本章小结\n矩阵尺寸决定权重容量，batch 和上下文长度影响运算与读写量。'},
+        {'chunk_id': 'unrelated', 'document_id': 'other', 'chapter_evidence_role': 'chapter_summary',
+         'text': '本章小结\n另一份书讨论其他模型架构资源。'},
+    ])
+
+    assert result.status == 'supported'
+    assert result.evidence_chunk_ids == ('intro', 'continuation', 'summary')
 
 
 def test_training_only_parameter_evidence_is_partial_for_comparison():

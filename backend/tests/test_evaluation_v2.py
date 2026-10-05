@@ -51,7 +51,8 @@ def test_record_separates_candidates_selected_and_answer_evidence():
 def test_record_marks_expanded_context_separately_from_ranked_candidates():
     case = load_calibrated_suite(GOLD).cases[17]
     ranked = {'chunk_id': 'intro', 'location': '第 401 页', 'text': '第 10 章 训练系统',
-              'retrieval_sources': ['vector'], 'selected': True}
+              'retrieval_sources': ['vector'], 'selected': True,
+              'chapter_evidence_role': 'intro'}
     context = {'chunk_id': 'summary', 'location': '第 446 页', 'text': '本章小结',
                'retrieval_sources': ['context'], 'context_reason': 'chapter_summary', 'selected': True}
     sources = {'citations': [{**ranked, 'id': 1}, {**context, 'id': 2}],
@@ -64,6 +65,8 @@ def test_record_marks_expanded_context_separately_from_ranked_candidates():
     assert [item['chunk_id'] for item in result['retrieval']['context_items']] == ['summary']
     assert result['retrieval']['context_items'][0]['context_reason'] == 'chapter_summary'
     assert [item['chunk_id'] for item in result['answer']['input_evidence']] == ['intro', 'summary']
+    assert result['retrieval']['selected_items'][0]['chapter_evidence_role'] == 'intro'
+    assert result['answer']['input_evidence'][0]['chapter_evidence_role'] == 'intro'
 
 
 def test_unanswerable_nearest_neighbor_is_not_scored_as_answer_failure():

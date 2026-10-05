@@ -1,0 +1,61 @@
+{
+  "schema": "structure-chunking-zh-v1",
+  "scope": "中文文档、中文提问、中文回答；英文 MambaIRv2 仅为历史 parser 参考",
+  "documents": [
+    {"key": "ai_infra", "name": "AI-Infra-Book.pdf", "sha256": "cdbb925efe420ab0c65a245068770e443b4f52995e902c56669324329725e217", "pages": 519, "role": "primary"},
+    {"key": "promotion", "name": "2027届本科毕业生推免工作细则.pdf", "sha256": "d4c7495e0a672e641780349fb00d49bac161c68788b981189774ba6e195b07a0", "pages": 16, "role": "primary"},
+    {"key": "mambair_en", "name": "MambaIRv2_Attentive_State_Space_Restoration.pdf", "role": "historical_parser_reference_only"},
+    {"key": "mambair_zh", "name": "Mambav2(1) zh.pdf", "role": "pending_translation_review"}
+  ],
+  "evidence_rule": "Each listed fact must be supported by a chunk in the same source document. A fact's all_terms are conservative textual evidence anchors; per-query first matches require manual audit for relation and completeness. All facts together constitute a complete answer-bearing evidence prefix.",
+  "queries": [
+    {"id": "ai-q01", "document_key": "ai_infra", "question": "什么是 AI Infra？它包含哪些主要部分？", "facts": [
+      {"id": "definition", "source_pages": [11], "all_terms": ["AI Infra 是支撑 AI 训练和推理的基础设施"]},
+      {"id": "components", "source_pages": [11], "all_terms": ["计算设备、存储与互联", "组织这些资源的软件"]}
+    ]},
+    {"id": "ai-q02", "document_key": "ai_infra", "question": "在模型调用中，上下文指什么？为什么它会影响执行？", "facts": [
+      {"id": "definition", "source_pages": [11], "all_terms": ["上下文", "本次模型调用可以使用的输入内容"]},
+      {"id": "effect", "source_pages": [11], "all_terms": ["保持模型参数不变", "改变指令、示例或参考材料", "改变模型处理的任务及回答方式"]}
+    ]},
+    {"id": "ai-q03", "document_key": "ai_infra", "question": "什么是推理实例？", "facts": [
+      {"id": "definition", "source_pages": [14], "all_terms": ["推理实例是能够独立完成模型请求的一组执行资源", "一个或多个加速器组成"]}
+    ]},
+    {"id": "ai-q04", "document_key": "ai_infra", "question": "预填充和解码分别做什么？", "facts": [
+      {"id": "prefill", "source_pages": [14], "all_terms": ["模型先处理输入", "预填充"]},
+      {"id": "decode", "source_pages": [14], "all_terms": ["逐步生成新token", "解码"]}
+    ]},
+    {"id": "ai-q19", "document_key": "ai_infra", "question": "MHA 的每个 Q 头怎样使用 K、V？", "facts": [
+      {"id": "own_kv", "source_pages": [44], "all_terms": ["多头注意力", "每个", "头对应自己的", "头"]}
+    ]},
+    {"id": "ai-q20", "document_key": "ai_infra", "question": "GQA 和 MQA 的 KV 共享方式有什么区别？", "facts": [
+      {"id": "gqa", "source_pages": [44], "all_terms": ["分组查询注意力", "分组", "每组共享一组"]},
+      {"id": "mqa", "source_pages": [44], "all_terms": ["多查询注意力", "所有", "头共用一组"]}
+    ]},
+    {"id": "ai-q21", "document_key": "ai_infra", "question": "MQA 为什么减少 KV 保存量，Q 头是否仍独立？", "facts": [
+      {"id": "shared_kv", "source_pages": [44], "all_terms": ["MQA", "共用一份", "数依次为四、二、一"]},
+      {"id": "independent_q", "source_pages": [44], "all_terms": ["查询头", "不同的分数"]}
+    ]},
+    {"id": "ai-figure", "document_key": "ai_infra", "question": "图 1-13 的实测整批吞吐说明了什么取舍？", "facts": [
+      {"id": "throughput", "source_pages": [25], "all_terms": ["图 1-13", "从 1 个请求增到 64 个请求", "整批吞吐约提高 31 倍"]},
+      {"id": "latency", "source_pages": [25], "all_terms": ["单请求输出间隔", "26.5 ms", "40.5 ms"]}
+    ]},
+    {"id": "ai-batch-formula", "document_key": "ai_infra", "question": "转折 batch size B* 的计算公式是什么？", "facts": [
+      {"id": "formula", "source_pages": [24], "all_terms": ["𝐵∗", "𝑏𝑊 Π", "2𝛽"]}
+    ], "risk": "unverified_formula_structure"},
+    {"id": "policy-gpa", "document_key": "promotion", "question": "推免的必修课平均学分绩点门槛是多少？", "facts": [
+      {"id": "threshold", "source_pages": [2], "all_terms": ["通过当前全部应修的必修课程", "平均学分绩点大于等于3.2"]}
+    ]},
+    {"id": "policy-awards", "document_key": "promotion", "question": "竞赛获奖成绩可以累加多项吗？", "facts": [
+      {"id": "highest_only", "source_pages": [9], "all_terms": ["竞赛获奖成绩", "取最高一项成果计分", "不累加计分"]}
+    ]},
+    {"id": "policy-team", "document_key": "promotion", "question": "团队竞赛获奖的成员分值如何扣减？", "facts": [
+      {"id": "deduction", "source_pages": [9], "all_terms": ["团队成员在下表对应的分值上减去0.01*", "团队排名-1", "最低为0 分"]}
+    ]},
+    {"id": "policy-table", "document_key": "promotion", "question": "竞赛等级Ⅱ级甲等的第二等次对应多少分？", "facts": [
+      {"id": "row_value", "source_pages": [9], "all_terms": ["竞赛等级", "第二等次", "Ⅱ级甲等", "0.05"]}
+    ]},
+    {"id": "policy-csp", "document_key": "promotion", "question": "CSP 考试成绩达到 300 分时，g_i 如何计分？", "facts": [
+      {"id": "first_branch", "source_pages": [9], "all_terms": ["g_i", "0.2,", "x_i >= 300"]}
+    ], "risk": "manual_page_correction"}
+  ]
+}

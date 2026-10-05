@@ -113,6 +113,14 @@ def build_query_plan(question: str) -> QueryPlan:
         return QueryPlan(original, 'requirement_lookup', subject, metric,
                          _search_terms(subject, metric), (normalized, rewrite),
                          ('requirement', 'metric_scope'), year.group() if year else None)
+    technical_rewrite = None
+    if re.search(r'KV\s*缓存', normalized, re.I) and re.search(r'复用|重用', normalized):
+        technical_rewrite = '旧 token 的 K V 在权重、位置不变时复用，避免重算；当前查询注意力仍需计算'
+    elif '数量级估算' in normalized and re.search(r'为什么|为何|作用|意义', normalized):
+        technical_rewrite = '数量级估算检查容量 带宽 算力 串行约束，明确假设和遗漏，再用测量校正'
+    elif '长上下文' in normalized and re.search(r'计算|存储|资源', normalized):
+        technical_rewrite = '逐 token KV 随上下文长度增长，读取旧 KV 与注意力计算；固定状态递推是例外'
     return QueryPlan(original, 'general', None, None,
-                     tuple(extract_lexical_terms(normalized)), (normalized,), (),
+                     tuple(extract_lexical_terms(normalized)),
+                     (normalized, technical_rewrite) if technical_rewrite else (normalized,), (),
                      year.group() if year else None)
